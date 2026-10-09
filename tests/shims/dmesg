@@ -1,0 +1,2 @@
+#!/bin/sh
+cat "$FBS_ROOT/dmesg.txt"

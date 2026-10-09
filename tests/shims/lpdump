@@ -1,0 +1,4 @@
+#!/bin/sh
+# Answers only when the test asks for it; otherwise behaves like a phone without lpdump.
+[ -e "$FBS_ROOT/use-lpdump" ] || exit 1
+cat "$FBS_ROOT/lpdump.json"

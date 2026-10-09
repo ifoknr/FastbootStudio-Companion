@@ -1,0 +1,54 @@
+name: release
+
+# Run from the Actions tab (or the API) with the version to publish, e.g. v0.1.0. It must
+# match module.prop, bin/fbs, update.json and a "## vX.Y.Z" section in CHANGELOG.md.
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: Version to release (vX.Y.Z)
+        required: true
+      prerelease:
+        description: Mark as a pre-release
+        type: boolean
+        default: false
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    env:
+      RELEASE_VERSION: ${{ inputs.version }}
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Check the version
+        run: |
+          prop=$(sed -n 's/^version=//p' module/module.prop)
+          if [ "$prop" != "$RELEASE_VERSION" ]; then
+            echo "module.prop says $prop, asked for $RELEASE_VERSION" >&2
+            exit 1
+          fi
+
+      - name: Test
+        run: |
+          sudo apt-get update -q && sudo apt-get install -y -q mksh busybox jq zip
+          SHELLS="dash mksh busybox-sh" sh tests/run.sh
+
+      - name: Build
+        run: sh tools/build.sh dist
+
+      - name: Release notes from CHANGELOG.md
+        run: |
+          awk -v v="## $RELEASE_VERSION" '$0 == v { on = 1; next } /^## / { on = 0 } on' CHANGELOG.md > notes.md
+          cat notes.md
+
+      - name: Publish
+        run: |
+          flag=
+          [ "${{ inputs.prerelease }}" = true ] && flag=--prerelease
+          gh release create "$RELEASE_VERSION" dist/FastbootStudio-Companion-$RELEASE_VERSION.zip \
+            --target "$GITHUB_SHA" --title "Fastboot Studio Companion $RELEASE_VERSION" --notes-file notes.md $flag

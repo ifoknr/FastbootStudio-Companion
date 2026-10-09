@@ -1,0 +1,36 @@
+name: ci
+
+on:
+  push:
+    branches: [ "**" ]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install shells and shellcheck
+        run: sudo apt-get update -q && sudo apt-get install -y -q mksh busybox shellcheck jq zip
+
+      - name: shellcheck
+        run: shellcheck -x module/bin/fbs module/customize.sh module/action.sh module/uninstall.sh tests/*.sh tests/shims/* tools/*.sh
+
+      - name: fbs against a fake phone (dash, mksh, busybox)
+        run: SHELLS="dash mksh busybox-sh" sh tests/run.sh
+
+      - name: WebUI scripts parse
+        run: for f in module/webroot/*.js; do node --check "$f"; done
+
+      - name: WebUI smoke test (headless Chrome, demo bridge)
+        run: CHROME=google-chrome sh tests/webui-smoke.sh
+
+      - name: Build the module zip
+        run: sh tools/build.sh dist
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: module-zip
+          path: dist/*.zip

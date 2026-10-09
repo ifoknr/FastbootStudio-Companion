@@ -1,0 +1,8 @@
+#!/bin/sh
+# getprop for the fake phone: reads name=value lines from $FBS_ROOT/props.
+f=$FBS_ROOT/props
+if [ $# -eq 0 ]; then
+    sed 's/^\([^=]*\)=\(.*\)$/[\1]: [\2]/' "$f"
+    exit 0
+fi
+sed -n "s/^$1=//p" "$f" | head -n 1

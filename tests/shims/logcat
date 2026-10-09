@@ -1,0 +1,5 @@
+#!/bin/sh
+# Records its arguments so the tests can see what fbs asked for.
+printf '%s|' "$@" >> "$FBS_ROOT/logcat.args"
+echo >> "$FBS_ROOT/logcat.args"
+cat "$FBS_ROOT/logcat.txt"

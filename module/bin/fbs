@@ -1,0 +1,67 @@
+#!/system/bin/sh
+# fbs: the Fastboot Studio Companion command line.
+#
+# Everything the WebUI, the Action button and the Windows app show comes from here, as JSON
+# (or one JSON object per line for long jobs), so all three always agree. Nothing here writes
+# to a partition: the only writes are backups and reports under /sdcard/FastbootStudio.
+
+FBS_VERSION=0.1.0
+FBS_LIB=${FBS_LIB:-${0%/*}/../lib}
+
+# shellcheck source=SCRIPTDIR/../lib/common.sh
+. "$FBS_LIB/common.sh" || exit 1
+# shellcheck source=SCRIPTDIR/../lib/detect.sh
+. "$FBS_LIB/detect.sh" || exit 1
+# shellcheck source=SCRIPTDIR/../lib/parts.sh
+. "$FBS_LIB/parts.sh" || exit 1
+# shellcheck source=SCRIPTDIR/../lib/log.sh
+. "$FBS_LIB/log.sh" || exit 1
+# shellcheck source=SCRIPTDIR/../lib/backup.sh
+. "$FBS_LIB/backup.sh" || exit 1
+# shellcheck source=SCRIPTDIR/../lib/tools.sh
+. "$FBS_LIB/tools.sh" || exit 1
+
+usage() {
+    cat <<EOF
+fbs $FBS_VERSION, Fastboot Studio Companion
+
+  info                     device, boot state, kernel, battery and storage (JSON)
+  report                   the same, as text
+  parts                    partitions under by-name with sizes in sectors (JSON)
+  super                    logical partitions inside super (JSON)
+  cpu                      core clocks, temperature and memory, one line (JSON)
+  log kernel [lines]       newest kernel log lines
+  log app [lines|time]     logcat, or every line since 'MM-DD hh:mm:ss.mmm'
+  last [lines]             the previous boot's kernel log (pstore)
+  backup critical|boot|full
+                           copy partitions to $DATA/Backups (JSON lines)
+  backups                  the backups on the phone (JSON)
+  verify <folder>          re-check a backup against its SHA256SUMS (JSON lines)
+  reboot bootloader|fastboot|recovery|edl
+  bundle [plain]           logs and device info for a bug report, IMEI and serial masked
+  version
+EOF
+}
+
+cmd=$1
+[ $# -gt 0 ] && shift
+case $cmd in
+    info) info_json ;;
+    report) report_text ;;
+    parts) parts_json ;;
+    super) super_json ;;
+    cpu) cpu_json ;;
+    log) log_cmd "$@" ;;
+    last) last_text "$@" ;;
+    backup) backup_run "$@" ;;
+    backups) backups_json ;;
+    verify) verify_run "$@" ;;
+    reboot) reboot_to "$@" ;;
+    bundle) bundle_run "$@" ;;
+    version | -v | --version) echo "$FBS_VERSION" ;;
+    help | -h | --help | '') usage ;;
+    *)
+        usage >&2
+        exit 2
+        ;;
+esac

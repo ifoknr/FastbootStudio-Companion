@@ -1,0 +1,3 @@
+shell=sh
+# Partition names, props and device names are ASCII; A-Z ranges are what toybox tr knows best.
+disable=SC2018,SC2019
