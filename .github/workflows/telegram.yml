@@ -1,0 +1,46 @@
+name: telegram
+
+# Posts a release that already exists to Telegram again, e.g. after setting the secrets or
+# moving the group. New releases are posted by release.yml itself.
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Release tag to post (vX.Y.Z)
+        required: true
+
+permissions:
+  contents: read
+
+jobs:
+  notify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Get the release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ inputs.tag }}
+        run: |
+          pre=$(gh release view "$TAG" --json isPrerelease --jq .isPrerelease)
+          asset=$(gh release view "$TAG" --json assets --jq '[.assets[].name | select(endswith(".zip"))][0] // empty')
+          if [ -n "$asset" ]; then
+            gh release download "$TAG" -p "$asset" -D out
+            echo "FILE=out/$asset" >> "$GITHUB_ENV"
+          fi
+          echo "TAG=$TAG" >> "$GITHUB_ENV"
+          echo "PRE=$pre" >> "$GITHUB_ENV"
+
+      - name: Notify Telegram
+        env:
+          TELEGRAM_TOKEN: ${{ secrets.TELEGRAM_TOKEN }}
+          TELEGRAM_TO: ${{ secrets.TELEGRAM_TO }}
+          TELEGRAM_TOPIC: ${{ secrets.TELEGRAM_TOPIC }}
+          TOOL: FastbootStudioCompanion
+          ICON: "🧩"
+          LAYER: "مود روت رفيق لـ Fastboot Studio: فحص الجهاز والبارتشنات واللوق اللحظي والباك أب"
+          REQUIRES: "Magisk أو KernelSU أو APatch (الواجهة في KernelSU و APatch و MMRL)"
+          AUTO_UPDATE: "true"
+          VERSION: ${{ inputs.tag }}
+        run: bash .github/scripts/telegram-release.sh

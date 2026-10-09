@@ -48,7 +48,28 @@ jobs:
 
       - name: Publish
         run: |
+          zip=dist/FastbootStudio-Companion-$RELEASE_VERSION.zip
+          pre=${{ inputs.prerelease }}
           flag=
-          [ "${{ inputs.prerelease }}" = true ] && flag=--prerelease
-          gh release create "$RELEASE_VERSION" dist/FastbootStudio-Companion-$RELEASE_VERSION.zip \
+          [ "$pre" = true ] && flag=--prerelease
+          gh release create "$RELEASE_VERSION" "$zip" \
             --target "$GITHUB_SHA" --title "Fastboot Studio Companion $RELEASE_VERSION" --notes-file notes.md $flag
+          echo "FILE=$zip" >> "$GITHUB_ENV"
+          echo "TAG=$RELEASE_VERSION" >> "$GITHUB_ENV"
+          echo "PRE=$pre" >> "$GITHUB_ENV"
+
+      # The same post as Fastboot Studio's: the zip, the CHANGELOG section and link buttons.
+      # Skipped without the secrets. A release made with GITHUB_TOKEN starts no other
+      # workflow, so the post is sent from here.
+      - name: Notify Telegram
+        env:
+          TELEGRAM_TOKEN: ${{ secrets.TELEGRAM_TOKEN }}
+          TELEGRAM_TO: ${{ secrets.TELEGRAM_TO }}
+          TELEGRAM_TOPIC: ${{ secrets.TELEGRAM_TOPIC }}
+          TOOL: FastbootStudioCompanion
+          ICON: "🧩"
+          LAYER: "مود روت رفيق لـ Fastboot Studio: فحص الجهاز والبارتشنات واللوق اللحظي والباك أب"
+          REQUIRES: "Magisk أو KernelSU أو APatch (الواجهة في KernelSU و APatch و MMRL)"
+          AUTO_UPDATE: "true"
+          VERSION: ${{ inputs.version }}
+        run: bash .github/scripts/telegram-release.sh
