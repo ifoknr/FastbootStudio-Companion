@@ -58,6 +58,7 @@ for SHN in $SHELLS; do
     expect "eMMC wear" jqt "$out" '.storage.type == "emmc" and .storage.life_a == "0x02" and .storage.eol == "0x01"'
     expect "memory" jqt "$out" '.memory.total_kb == 7864320 and .memory.avail_kb == 2725000'
     expect "SELinux" jqt "$out" '.selinux == "Enforcing"'
+    expect "channel is reported" jqt "$out" '.channel == "beta" or .channel == "stable"'
 
     # ---- report
     out=$(fbs report)

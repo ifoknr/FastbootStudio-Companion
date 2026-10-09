@@ -25,7 +25,8 @@ button, input { font: inherit; color: inherit; }
   position: sticky; top: 0; z-index: 3; display: flex; align-items: center; justify-content: space-between; gap: 8px;
   padding: calc(var(--top) + 12px) 16px 12px; background: var(--bg); border-bottom: 1px solid var(--line);
 }
-.appbar .title { font-weight: 700; font-size: 17px; line-height: 1.2; }
+.appbar .title { font-weight: 700; font-size: 17px; line-height: 1.2; display: flex; align-items: center; gap: 8px; }
+.appbar .title .chip { font-size: 10.5px; padding: 1px 7px; }
 .appbar .sub { font-size: 12px; color: var(--faint); direction: ltr; unicode-bidi: isolate; }
 [dir="rtl"] .appbar .sub { text-align: right; }
 

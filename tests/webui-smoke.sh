@@ -21,6 +21,7 @@ for lang in en ar; do
     check "super card filled" 'system_a'
     check "backup sets described" 'id="setCritical">[^<]'
     check "reboot targets listed" 'data-r="bootloader"'
+    check "beta badge shown" 'id="betaChip" data-i="beta">'
     check "saved backups listed" 'Demo_Phone_DEMO0123456789_20260921-184012'
     if printf '%s' "$dom" | grep -q 'class="card alert"><p class="note"'; then
         echo "FAIL [$lang] the bridge error card is showing"

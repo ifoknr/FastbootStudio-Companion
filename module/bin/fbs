@@ -5,7 +5,10 @@
 # (or one JSON object per line for long jobs), so all three always agree. Nothing here writes
 # to a partition: the only writes are backups and reports under /sdcard/FastbootStudio.
 
-FBS_VERSION=0.1.0
+FBS_VERSION=2.3.0
+# beta while the module is experimental; stable once it is not. release.yml publishes a beta
+# as a pre-release, the WebUI shows a Beta badge, and tools/build.sh checks module.prop agrees.
+FBS_CHANNEL=beta
 FBS_LIB=${FBS_LIB:-${0%/*}/../lib}
 
 # shellcheck source=SCRIPTDIR/../lib/common.sh
@@ -23,7 +26,7 @@ FBS_LIB=${FBS_LIB:-${0%/*}/../lib}
 
 usage() {
     cat <<EOF
-fbs $FBS_VERSION, Fastboot Studio Companion
+fbs $FBS_VERSION ($FBS_CHANNEL), Fastboot Studio Companion
 
   info                     device, boot state, kernel, battery and storage (JSON)
   report                   the same, as text

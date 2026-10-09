@@ -1,5 +1,10 @@
 # Fastboot Studio Companion
 
+> **Beta.** This module is experimental. Its version follows Fastboot Studio (v2.3.0), and releases
+> are published as pre-releases until it is marked stable.
+>
+> **تجريبي.** الوحدة في مرحلة تجريبية، ورقم إصدارها نفس Fastboot Studio (v2.3.0)، وإصداراتها تنزل كإصدارات تجريبية لين تصير مستقرة.
+
 A root module for **Magisk, KernelSU and APatch** that goes with
 [Fastboot Studio](https://github.com/ifoknr/FastbootStudio) on Windows. It shows what your phone
 really is, watches its logs live, and backs up its partitions in the same layout the Windows app

@@ -128,8 +128,8 @@ collect() {
 
 info_json() {
     collect
-    printf '{"fbs":%s,"model":%s,"brand":%s,"device":%s,"product":%s,' \
-        "$(js "$FBS_VERSION")" "$(js "$I_MODEL")" "$(js "$I_BRAND")" "$(js "$I_DEVICE")" "$(js "$I_PRODUCT")"
+    printf '{"fbs":%s,"channel":%s,"model":%s,"brand":%s,"device":%s,"product":%s,' \
+        "$(js "$FBS_VERSION")" "$(js "$FBS_CHANNEL")" "$(js "$I_MODEL")" "$(js "$I_BRAND")" "$(js "$I_DEVICE")" "$(js "$I_PRODUCT")"
     printf '"android":%s,"sdk":%s,"patch":%s,"build":%s,' \
         "$(js "$I_ANDROID")" "$(js "$I_SDK")" "$(js "$I_PATCH")" "$(js "$I_BUILD")"
     printf '"platform":%s,"soc":%s,"arch":%s,"slot":%s,"dynamic":%s,"treble":%s,"vndk":%s,' \
@@ -155,7 +155,7 @@ report_text() {
     _ab=; [ -n "$I_SLOT" ] && _ab=" · A/B"
     _dyn=; [ "$I_DYNAMIC" = true ] && _dyn=" · dynamic"
     _vb=$I_VBSTATE; [ "$I_VB_SPOOFED" = true ] && _vb="$_vb (property says otherwise)"
-    echo "Fastboot Studio Companion $FBS_VERSION"
+    echo "Fastboot Studio Companion $FBS_VERSION ($FBS_CHANNEL)"
     echo ""
     echo "Device      $I_BRAND $I_MODEL ($I_DEVICE)"
     echo "Chip        $I_PLATFORM · $I_SOC · $I_ARCH"

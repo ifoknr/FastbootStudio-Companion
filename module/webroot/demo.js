@@ -22,7 +22,7 @@
   ];
 
   const info = {
-    fbs: '0.1.0', model: 'Demo Phone', brand: 'Demo', device: 'demo', product: 'demo_mt6789',
+    fbs: '2.3.0', channel: 'beta', model: 'Demo Phone', brand: 'Demo', device: 'demo', product: 'demo_mt6789',
     android: '14', sdk: '34', patch: '2026-08-05', build: 'DEMO-14.0.1', platform: 'mt6789', soc: 'mediatek',
     arch: 'arm64-v8a', slot: '_a', dynamic: true, treble: true, vndk: '34',
     boot: { vbstate: 'orange', device_state: 'unlocked', locked: false, spoofed: true },

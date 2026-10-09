@@ -1,7 +1,7 @@
 id=fastboot_studio_companion
-name=Fastboot Studio Companion
-version=v0.1.0
-versionCode=100
+name=Fastboot Studio Companion (Beta)
+version=v2.3.0
+versionCode=230
 author=IFOKNR
-description=Device check, partitions, live kernel log and SHA-256 backups for Fastboot Studio. Read-only, nothing runs at boot. Open the WebUI or press Action.
+description=Beta. Device check, partitions, live kernel log and SHA-256 backups for Fastboot Studio. Read-only, nothing runs at boot. Open the WebUI or press Action.
 updateJson=https://raw.githubusercontent.com/ifoknr/FastbootStudio-Companion/main/update.json

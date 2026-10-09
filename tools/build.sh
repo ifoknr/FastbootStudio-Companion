@@ -8,6 +8,8 @@ OUT=${1:-$ROOT/dist}
 VER=$(sed -n 's/^version=//p' "$ROOT/module/module.prop")
 CODE=$(sed -n 's/^versionCode=//p' "$ROOT/module/module.prop")
 FBS=v$(sed -n 's/^FBS_VERSION=//p' "$ROOT/module/bin/fbs")
+CHANNEL=$(sed -n 's/^FBS_CHANNEL=//p' "$ROOT/module/bin/fbs")
+NAME=$(sed -n 's/^name=//p' "$ROOT/module/module.prop")
 UJ_VER=$(jq -r .version "$ROOT/update.json")
 UJ_CODE=$(jq -r .versionCode "$ROOT/update.json")
 UJ_ZIP=$(jq -r .zipUrl "$ROOT/update.json")
@@ -19,6 +21,13 @@ bad=0
 case $UJ_ZIP in
     */download/$VER/FastbootStudio-Companion-$VER.zip) ;;
     *) echo "update.json zipUrl does not point at $VER: $UJ_ZIP" >&2; bad=1 ;;
+esac
+case $CHANNEL:$NAME in
+    "beta:"*" (Beta)" | "stable:"*) ;;
+    *) echo "bin/fbs channel is '$CHANNEL' but module.prop name is '$NAME'" >&2; bad=1 ;;
+esac
+case $CHANNEL:$NAME in
+    "stable:"*"(Beta)"*) echo "a stable build cannot be named Beta: $NAME" >&2; bad=1 ;;
 esac
 grep -q "^## $VER\$" "$ROOT/CHANGELOG.md" || { echo "CHANGELOG.md has no '## $VER' section" >&2; bad=1; }
 [ $bad = 0 ] || exit 1

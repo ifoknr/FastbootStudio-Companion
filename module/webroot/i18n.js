@@ -61,7 +61,7 @@ const STRINGS = {
     'bundle.redact': 'Mask IMEI, serial and MAC addresses', 'bundle.go': 'Make the file', 'bundle.making': 'Collecting…',
     'bundle.saved': 'Saved to {0}',
     'about.title': 'About', 'about.version': 'Version', 'about.backups': 'Backups', 'about.source': 'Source',
-    'lang.auto': 'Auto',
+    'lang.auto': 'Auto', 'beta': 'Beta',
     'demo': 'Demo data. Open this page from your root manager to see your own phone.',
   },
   ar: {
@@ -122,7 +122,7 @@ const STRINGS = {
     'bundle.redact': 'إخفاء الـ IMEI والسيريال وعناوين MAC', 'bundle.go': 'جهّز الملف', 'bundle.making': 'يجمع…',
     'bundle.saved': 'انحفظ في {0}',
     'about.title': 'عن الوحدة', 'about.version': 'النسخة', 'about.backups': 'الباك أب', 'about.source': 'الكود',
-    'lang.auto': 'تلقائي',
+    'lang.auto': 'تلقائي', 'beta': 'تجريبي',
     'demo': 'بيانات تجريبية. افتح الصفحة من تطبيق الروت عشان تشوف جوالك.',
   },
 };

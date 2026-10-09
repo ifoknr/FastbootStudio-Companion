@@ -45,7 +45,11 @@ fi
 {
   if [ "$PRE" = true ]; then
     echo "🧪 <b>$TOOL</b> <code>$TAG</code>"
-    echo "<i>إصدار تجريبي، للاختبار فقط · ما يوصل كتحديث</i>"
+    if [ "${AUTO_UPDATE:-false}" = true ]; then
+      echo "<i>إصدار تجريبي · يوصلك من الروت مانجر</i>"
+    else
+      echo "<i>إصدار تجريبي، للاختبار فقط · ما يوصل كتحديث</i>"
+    fi
   else
     echo "$ICON <b>$TOOL</b> <code>$TAG</code>"
     echo "<i>$LAYER</i>"

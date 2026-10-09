@@ -1,6 +1,6 @@
 name: release
 
-# Run from the Actions tab (or the API) with the version to publish, e.g. v0.1.0. It must
+# Run from the Actions tab (or the API) with the version to publish, e.g. v2.3.0. It must
 # match module.prop, bin/fbs, update.json and a "## vX.Y.Z" section in CHANGELOG.md.
 on:
   workflow_dispatch:
@@ -50,6 +50,8 @@ jobs:
         run: |
           zip=dist/FastbootStudio-Companion-$RELEASE_VERSION.zip
           pre=${{ inputs.prerelease }}
+          # A beta build (FBS_CHANNEL=beta in bin/fbs) is always a pre-release.
+          grep -q '^FBS_CHANNEL=beta$' module/bin/fbs && pre=true
           flag=
           [ "$pre" = true ] && flag=--prerelease
           gh release create "$RELEASE_VERSION" "$zip" \

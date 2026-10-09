@@ -153,6 +153,7 @@ function renderDevice() {
   const root = $('#rootChip');
   root.textContent = i.root;
   root.hidden = !i.root || i.root === 'unknown';
+  $('#betaChip').hidden = i.channel !== 'beta';
 
   const vb = (i.boot.vbstate || '').toLowerCase();
   const avb = $('#avbChip');
@@ -633,7 +634,7 @@ function renderTools() {
   $('#rebootGrid').innerHTML = targets.map(([id, name, cmd, ok, why]) =>
     `<button class="rbtn" data-r="${id}"${ok ? '' : ' disabled'}><b>${name}</b><small class="ltr">${esc(ok ? cmd : why)}</small></button>`).join('');
   kv($('#aboutKv'), [
-    [T('about.version'), 'v' + i.fbs],
+    [T('about.version'), 'v' + i.fbs + (i.channel === 'beta' ? ' · ' + T('beta') : '')],
     [T('about.backups'), '/sdcard/FastbootStudio/Backups'],
     [T('about.source'), 'github.com/ifoknr/FastbootStudio-Companion'],
   ]);
