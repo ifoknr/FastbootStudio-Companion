@@ -24,6 +24,8 @@ grep -q "^## $VER\$" "$ROOT/CHANGELOG.md" || { echo "CHANGELOG.md has no '## $VE
 [ $bad = 0 ] || exit 1
 
 mkdir -p "$OUT"
+# Absolute, because zip runs from inside module/.
+OUT=$(cd "$OUT" && pwd)
 ZIP=$OUT/FastbootStudio-Companion-$VER.zip
 rm -f "$ZIP"
 # demo.js is only for previews in a browser; on a phone the root manager's bridge is used.
