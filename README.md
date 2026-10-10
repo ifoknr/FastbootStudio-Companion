@@ -52,6 +52,14 @@ A backup folder looks exactly like one made by Fastboot Studio's Backup page:
 
 Copy it to your PC and check or restore it from Fastboot Studio.
 
+## With Fastboot Studio on Windows
+
+When the phone is connected in Android, Fastboot Studio reads `fbs facts` over adb (through su)
+and keeps it for that phone: the kernel and KMI it checks a boot image against before flashing,
+the root manager (it asks before flashing an image rooted with another one), the AVB state and
+how many module conflicts there are. The device page shows them, even once the phone is in the
+bootloader.
+
 ## Command line
 
 Everything the WebUI shows comes from one script, which prints JSON, so it can be used from
@@ -94,6 +102,7 @@ root manager with a made-up phone (`?lang=ar`, `?theme=light` and `#log` pick th
 - **المودات:** يكشف التعارض بين المودات: مودين يحطون نفس ملف النظام، أو مود يستبدل مجلد كامل فيخفي ملفات مود ثاني، أو نفس الخاصية بقيم مختلفة.
 - **اللوق:** الكيرنل و logcat لحظياً. اضغط على أي سطر SELinux ويطلع لك قاعدة `sepolicy.rule` جاهزة.
 - **الباك أب:** المهمة أو الإقلاع أو كامل، مع `SHA256SUMS` بنفس صيغة برنامج الويندوز، وتقدر تتحقق منه على الجوال.
+- **مع برنامج الويندوز:** لما توصل الجوال وهو على أندرويد، البرنامج يقرا معلومات الوحدة (الكيرنل و KMI ومدير الروت وحالة AVB والتعارضات) ويعرضها، وينبهك إذا صورة boot اللي بتفلشها ما تناسب كيرنل جوالك أو مروّتة بمدير روت ثاني.
 - **أدوات:** إعادة التشغيل للـ bootloader أو fastbootd أو recovery، وحزمة دعم فني تخفي الـ IMEI والسيريال.
 
 ![WebUI](docs/webui-ar.png)
