@@ -1,0 +1,3 @@
+#!/bin/sh
+shift
+echo "$@" >> "$FBS_ROOT/am.log"

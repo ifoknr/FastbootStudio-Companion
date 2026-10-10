@@ -177,6 +177,17 @@ for SHN in $SHELLS; do
     expect "unknown reboot target" refuses fbs reboot sideways
     expect "only one reboot ran" test "$(wc -l < "$R/reboot.log")" -eq 1
 
+    # ---- open
+    rm -f "$R/am.log"
+    out=$(fbs open https://t.me/IFOKNR1)
+    expect "open a link" jqt "$out" '.ok == true'
+    expect "open hands it to am" grep -qx -- '-a android.intent.action.VIEW -d https://t.me/IFOKNR1' "$R/am.log"
+    out=$(fbs open 'javascript:alert(1)')
+    expect "open takes https only" jqt "$out" '.ok == false'
+    out=$(fbs open "https://x.example/a'b")
+    expect "open refuses quotes" jqt "$out" '.msg == "bad-url"'
+    expect "nothing else reached am" test "$(wc -l < "$R/am.log")" -eq 1
+
     # ---- bundle
     out=$(fbs bundle)
     expect "bundle made" jqt "$out" '.ok == true and .redacted == true and (.file | endswith(".tar.gz"))'

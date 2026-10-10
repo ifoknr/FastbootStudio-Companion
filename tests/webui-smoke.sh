@@ -22,6 +22,9 @@ for lang in en ar; do
     check "backup sets described" 'id="setCritical">[^<]'
     check "reboot targets listed" 'data-r="bootloader"'
     check "beta badge shown" 'id="betaChip" data-i="beta">'
+    check "links listed" 'data-url="https://t.me/IFOKNR1"'
+    check "link to the Windows app" 'data-url="https://github.com/ifoknr/FastbootStudio/releases/latest"'
+    check "day/night button" 'id="themeBtn"'
     check "saved backups listed" 'Demo_Phone_DEMO0123456789_20260921-184012'
     if printf '%s' "$dom" | grep -q 'class="card alert"><p class="note"'; then
         echo "FAIL [$lang] the bridge error card is showing"
@@ -31,5 +34,9 @@ for lang in en ar; do
         check "page is right-to-left" 'dir="rtl"'
     fi
 done
+dom=$("$CHROME" --headless --no-sandbox --disable-gpu --virtual-time-budget=4000 --dump-dom "file://$PAGE?theme=light" 2>/dev/null)
+lang=light
+check "day mode applies" 'data-theme="light"'
+check "header button offers night mode" 'data-dark="0"'
 [ $fails -eq 0 ] && echo "webui smoke passed"
 [ $fails -eq 0 ]

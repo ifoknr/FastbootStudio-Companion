@@ -21,6 +21,30 @@ reboot_to() {
     reboot "$1"
 }
 
+# fbs open <https url>: hands a link to Android, so a Telegram link opens Telegram and the rest
+# the browser. The WebUI's own WebView would keep it inside the root manager.
+open_url() {
+    case $1 in
+        https://*) ;;
+        *)
+            echo '{"ok":false,"msg":"usage: fbs open https://..."}'
+            return 2
+            ;;
+    esac
+    case $1 in
+        *[[:space:]\"\'\`\\]*)
+            echo '{"ok":false,"msg":"bad-url"}'
+            return 2
+            ;;
+    esac
+    if am start -a android.intent.action.VIEW -d "$1" >/dev/null 2>&1; then
+        echo '{"ok":true}'
+    else
+        echo '{"ok":false,"msg":"am"}'
+        return 1
+    fi
+}
+
 # Masks what identifies the phone or its owner: 15-digit numbers (IMEI), the serial and MAC
 # addresses. Edits the files in place.
 redact_files() {

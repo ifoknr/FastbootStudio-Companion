@@ -636,7 +636,6 @@ function renderTools() {
   kv($('#aboutKv'), [
     [T('about.version'), 'v' + i.fbs + (i.channel === 'beta' ? ' · ' + T('beta') : '')],
     [T('about.backups'), '/sdcard/FastbootStudio/Backups'],
-    [T('about.source'), 'github.com/ifoknr/FastbootStudio-Companion'],
   ]);
 }
 
@@ -664,13 +663,21 @@ $('#bundleGo').onclick = async e => {
   btn.textContent = T('bundle.go');
 };
 
-function readLang() {
-  const forced = new URLSearchParams(location.search).get('lang');
-  if (['auto', 'ar', 'en'].includes(forced)) return forced;
-  try { return localStorage.getItem('fbs.lang') || 'auto'; } catch { return 'auto'; }
+// A saved choice, or one forced from the address (?lang=ar, ?theme=light) for previews.
+function readPref(key, allowed) {
+  const forced = new URLSearchParams(location.search).get(key);
+  if (allowed.includes(forced)) return forced;
+  try {
+    const v = localStorage.getItem('fbs.' + key);
+    return allowed.includes(v) ? v : 'auto';
+  } catch { return 'auto'; }
 }
+function savePref(key, value) {
+  try { localStorage.setItem('fbs.' + key, value); } catch { /* per-session only */ }
+}
+const readLang = () => readPref('lang', ['auto', 'ar', 'en']);
 $$('#langSeg button').forEach(b => b.addEventListener('click', () => {
-  try { localStorage.setItem('fbs.lang', b.dataset.lang); } catch { /* per-session only */ }
+  savePref('lang', b.dataset.lang);
   setLang(b.dataset.lang);
 }));
 function setLang(choice) {
@@ -683,7 +690,82 @@ function setLang(choice) {
   Log.updateRules();
   Log.render();
   loadBackups();
+  renderLinks();
+  setTheme(Theme.choice);
 }
+
+/* ---------------------------------------------------------------- day and night */
+
+// auto follows the phone; dark and light stick. data-dark tells the header button which
+// icon to show (what a tap switches to).
+const Theme = {
+  choice: 'auto',
+  media: matchMedia('(prefers-color-scheme: light)'),
+  dark() {
+    const t = document.documentElement.dataset.theme;
+    return t ? t === 'dark' : !this.media.matches;
+  },
+};
+function setTheme(choice) {
+  Theme.choice = choice;
+  const root = document.documentElement;
+  if (choice === 'auto') delete root.dataset.theme; else root.dataset.theme = choice;
+  root.dataset.dark = Theme.dark() ? '1' : '0';
+  $$('#themeSeg button').forEach(x => x.setAttribute('aria-pressed', String(x.dataset.theme === choice)));
+  const btn = $('#themeBtn');
+  btn.title = btn.ariaLabel = T(Theme.dark() ? 'theme.toLight' : 'theme.toDark');
+}
+Theme.media.addEventListener('change', () => setTheme(Theme.choice));
+$('#themeBtn').addEventListener('click', () => {
+  const next = Theme.dark() ? 'light' : 'dark';
+  savePref('theme', next);
+  setTheme(next);
+});
+$$('#themeSeg button').forEach(b => b.addEventListener('click', () => {
+  savePref('theme', b.dataset.theme);
+  setTheme(b.dataset.theme);
+}));
+
+/* ---------------------------------------------------------------- links */
+
+// group stays empty until there is a link for it; an empty entry is not shown.
+const LINKS = [
+  { id: 'app', url: 'https://github.com/ifoknr/FastbootStudio/releases/latest', icon: '<rect x="3" y="4" width="18" height="12" rx="2"/><path d="M8 20h8M12 16v4"/>' },
+  { id: 'group', url: '', icon: '<circle cx="9" cy="8" r="3.2"/><path d="M3 20c0-3.3 2.7-6 6-6s6 2.7 6 6"/><path d="M16 4.5a3 3 0 0 1 0 6M18 14.5c1.8.8 3 2.7 3 5.5"/>' },
+  { id: 'dm', url: 'https://t.me/IFOKNR1', icon: '<path d="M21 4 3 11l7 2.5L12.5 21 21 4z"/><path d="m10 13.5 4.5-4.5"/>' },
+  { id: 'source', url: 'https://github.com/ifoknr/FastbootStudio-Companion', icon: '<path d="m8 8-4 4 4 4M16 8l4 4-4 4M13.5 5l-3 14"/>' },
+];
+function renderLinks() {
+  const html = LINKS.filter(l => l.url).map(l =>
+    `<button class="lbtn" type="button" data-url="${esc(l.url)}"><svg viewBox="0 0 24 24">${l.icon}</svg>` +
+    `<span><b>${esc(T('links.' + l.id))}</b><small>${esc(l.url.replace(/^https:\/\//, ''))}</small></span></button>`).join('');
+  $$('[data-links]').forEach(el => { el.innerHTML = html; });
+}
+// The root manager's WebView keeps links inside itself, so hand them to Android instead:
+// Telegram links open Telegram, the rest the browser.
+document.addEventListener('click', async e => {
+  const b = e.target.closest('.lbtn[data-url]');
+  if (!b) return;
+  const url = b.dataset.url;
+  if (window.FBS_DEMO) { window.open(url, '_blank', 'noopener'); return; }
+  try {
+    const r = JSON.parse(await fbs('open', url));
+    if (!r.ok) throw new Error(r.msg);
+  } catch {
+    copy(url);
+  }
+});
+
+/* ---------------------------------------------------------------- fit */
+
+// The log box fills the screen: the header and, on phones, the bottom tab bar come off.
+function fit() {
+  const nav = $('.nav');
+  const bottomBar = nav.getBoundingClientRect().width > nav.getBoundingClientRect().height;
+  const chrome = $('.appbar').offsetHeight + (bottomBar ? nav.offsetHeight : 0);
+  document.documentElement.style.setProperty('--chrome', chrome + 'px');
+}
+addEventListener('resize', fit);
 
 /* ---------------------------------------------------------------- start */
 
@@ -713,7 +795,9 @@ async function start() {
       window.FBS_DEMO = true;
     } catch { /* fbs() fails next and the error card shows */ }
   }
+  Theme.choice = readPref('theme', ['auto', 'dark', 'light']);
   setLang(readLang());
+  fit();
   if (window.FBS_DEMO) toast(T('demo'));
   try {
     S.info = await fbsJson('info');

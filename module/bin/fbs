@@ -42,6 +42,7 @@ fbs $FBS_VERSION ($FBS_CHANNEL), Fastboot Studio Companion
   verify <folder>          re-check a backup against its SHA256SUMS (JSON lines)
   reboot bootloader|fastboot|recovery|edl
   bundle [plain]           logs and device info for a bug report, IMEI and serial masked
+  open <https url>         open a link in the app that owns it (Telegram, the browser)
   version
 EOF
 }
@@ -61,6 +62,7 @@ case $cmd in
     verify) verify_run "$@" ;;
     reboot) reboot_to "$@" ;;
     bundle) bundle_run "$@" ;;
+    open) open_url "$@" ;;
     version | -v | --version) echo "$FBS_VERSION" ;;
     help | -h | --help | '') usage ;;
     *)

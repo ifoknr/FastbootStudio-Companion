@@ -70,7 +70,7 @@ sh tools/build.sh                               # dist/FastbootStudio-Companion-
 ```
 
 `module/webroot/index.html` also opens in a normal browser, where `demo.js` stands in for the
-root manager with a made-up phone (`?lang=ar` and `#log` pick the language and tab).
+root manager with a made-up phone (`?lang=ar`, `?theme=light` and `#log` pick the language, theme and tab).
 
 ---
 
