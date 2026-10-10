@@ -168,6 +168,8 @@ report_text() {
     echo "Root        $I_ROOT"
     echo "Partitions  $_n"
     echo "Last boot   ${I_REASON:-unknown}"
+    _c=$(modules_json 2>/dev/null | grep -o '"kind":' | wc -l)
+    echo "Conflicts   $((_c + 0)) between modules"
     echo ""
     echo "Open the WebUI for partitions, live logs and backups."
 }

@@ -140,3 +140,44 @@ EOF
 cat > "$R/lpdump.json" <<'EOF'
 {"partitions":[{"name":"system_a","group_name":"main_a","is_dynamic":true,"size":"3446718464"},{"name":"system_b","group_name":"main_b","is_dynamic":true,"size":"0"}],"block_devices":[{"name":"super","first_sector":"2048","size":"9663676416","block_size":4096}],"groups":[{"name":"main_a","maximum_size":"9659482112"},{"name":"main_b","maximum_size":"9659482112"}]}
 EOF
+
+# Root modules that get in each other's way, plus two that must not count: one disabled, one
+# that does not mount (its system.prop still applies).
+M=$R/data/adb/modules
+mod() {
+    mkdir -p "$M/$1"
+    printf 'id=%s\nname=%s\nversion=v1.0\nversionCode=1\nauthor=tester\n' "$1" "$2" > "$M/$1/module.prop"
+}
+put() {
+    mkdir -p "$(dirname "$M/$1/$2")"
+    : > "$M/$1/$2"
+}
+mod hosts_a 'Hosts A'
+put hosts_a system/etc/hosts
+put hosts_a system/vendor/lib/libdemo.so
+printf 'ro.demo.x=1\nro.only.a=1\n' > "$M/hosts_a/system.prop"
+mod hosts_b 'Hosts "B"'
+put hosts_b system/etc/hosts
+put hosts_b vendor/lib/libdemo.so
+mod fonts_1 'Fonts 1'
+mod fonts_2 'Fonts 2'
+for i in $(seq 1 20); do
+    put fonts_1 "system/fonts/Demo$i.ttf"
+    put fonts_2 "system/fonts/Demo$i.ttf"
+done
+mod debloat 'Debloat'
+put debloat system/app/Foo/.replace
+printf '# comment=ignored\nro.demo.x=2\n' > "$M/debloat/system.prop"
+mod addon 'Addon'
+put addon system/app/Foo/extra.apk
+mod off 'Off'
+put off system/etc/hosts
+: > "$M/off/disable"
+mod nomount 'No mount'
+put nomount system/etc/hosts
+: > "$M/nomount/skip_mount"
+printf 'ro.demo.x = 1\n' > "$M/nomount/system.prop"
+mod ui 'With WebUI'
+put ui webroot/index.html
+put ui action.sh
+put ui service.sh

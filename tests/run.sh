@@ -177,6 +177,28 @@ for SHN in $SHELLS; do
     expect "unknown reboot target" refuses fbs reboot sideways
     expect "only one reboot ran" test "$(wc -l < "$R/reboot.log")" -eq 1
 
+    # ---- modules and their conflicts
+    out=$(fbs modules)
+    expect "modules is JSON" jqt "$out" '.modules | length == 9'
+    expect "a disabled module is listed but not scanned" jqt "$out" '.modules[] | select(.id == "off") | .enabled == false and .files == 0'
+    expect "skip_mount: no files, props still count" jqt "$out" '.modules[] | select(.id == "nomount") | .mount == false and .files == 0 and .props == 1'
+    expect "WebUI, Action and boot scripts" jqt "$out" '.modules[] | select(.id == "ui") | .webui and .action and .scripts == ["service.sh"]'
+    expect "names are escaped" jqt "$out" '.modules[] | select(.id == "hosts_b") | .name == "Hosts \"B\""'
+    expect "same file, and vendor/ is system/vendor/" jqt "$out" \
+        '[.conflicts[] | select(.kind == "file" and .modules == ["hosts_a","hosts_b"])][0] | .count == 2 and (.paths | index("/system/etc/hosts") != null) and (.paths | index("/system/vendor/lib/libdemo.so") != null)'
+    expect "shared files are grouped per module pair" jqt "$out" \
+        '[.conflicts[] | select(.kind == "file" and .modules == ["fonts_1","fonts_2"])][0] | .count == 20 and (.paths | length) == 12'
+    expect "a replaced folder hides another module's files" jqt "$out" \
+        '[.conflicts[] | select(.kind == "replace")] | length == 1 and .[0].path == "/system/app/Foo" and .[0].by == "debloat" and .[0].modules == ["addon"]'
+    expect "same property, different values" jqt "$out" \
+        '[.conflicts[] | select(.kind == "prop")] | length == 1 and .[0].key == "ro.demo.x" and (.[0].values | length) == 3'
+    expect "disabled and unmounted modules are not file conflicts" jqt "$out" \
+        '[.conflicts[] | select(.kind == "file") | .modules[]] | (index("off") == null and index("nomount") == null)'
+    expect "four conflicts in all" jqt "$out" '.conflicts | length == 4'
+    expect "scan files cleaned up" test ! -d "$WORK/run/scan"
+    out=$(fbs report)
+    expect "report counts conflicts" sh -c 'printf "%s" "$1" | grep -q "^Conflicts  *4 between modules$"' _ "$out"
+
     # ---- open
     rm -f "$R/am.log"
     out=$(fbs open https://t.me/IFOKNR1)
@@ -201,7 +223,7 @@ for SHN in $SHELLS; do
     rm -rf "$WORK/x"
 
     # ---- the Action button runs from the module folder
-    out=$(FBS_ROOT=$R PATH="$HERE/shims:$PATH" $SH "$ROOT/module/action.sh")
+    out=$(FBS_ROOT=$R FBS_RUN=$WORK/run PATH="$HERE/shims:$PATH" $SH "$ROOT/module/action.sh")
     expect "action prints the report" sh -c 'printf "%s\n" "$1" | head -n 1 | grep -q "^Fastboot Studio Companion "' _ "$out"
 
     # ---- cli

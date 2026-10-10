@@ -64,6 +64,21 @@
       <p class="note" id="partCount"></p>
     </section>
 
+    <!-- Modules -->
+    <section class="view" id="v-mods" hidden>
+      <div class="card">
+        <h3><span data-i="mods.title"></span><span class="chip mute" id="modsChip">…</span></h3>
+        <p class="note" id="modsSummary"></p>
+        <p class="note" data-i="mods.hint"></p>
+        <button class="btn ghost" id="modsScan" data-i="mods.scan" style="margin-top:.8rem"></button>
+      </div>
+      <div class="mgrid" id="modsConflicts"></div>
+      <div class="card">
+        <h3 data-i="mods.list"></h3>
+        <table class="ptable"><tbody id="modsRows"></tbody></table>
+      </div>
+    </section>
+
     <!-- Logs -->
     <section class="view" id="v-log" hidden>
       <div class="seg" role="group">
@@ -146,6 +161,7 @@
   <nav class="nav" role="tablist">
     <button role="tab" data-v="device" aria-selected="true"><span class="ico"><svg viewBox="0 0 24 24"><rect x="6" y="2.5" width="12" height="19" rx="2.5"/><path d="M11 18h2"/></svg></span><span data-i="tab.device"></span></button>
     <button role="tab" data-v="parts" aria-selected="false"><span class="ico"><svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 9h18M3 14h18M9 9v11"/></svg></span><span data-i="tab.parts"></span></button>
+    <button role="tab" data-v="mods" aria-selected="false"><span class="ico"><svg viewBox="0 0 24 24"><path d="M9 3h6v3a1.5 1.5 0 0 0 3 0V3h3v6h-3a1.5 1.5 0 0 0 0 3h3v9h-6v-3a1.5 1.5 0 0 0-3 0v3H3v-6h3a1.5 1.5 0 0 0 0-3H3V3h6z"/></svg></span><span data-i="tab.mods"></span></button>
     <button role="tab" data-v="log" aria-selected="false"><span class="ico"><svg viewBox="0 0 24 24"><path d="M4 6l4 4-4 4M11 18h9"/></svg></span><span data-i="tab.log"></span></button>
     <button role="tab" data-v="backup" aria-selected="false"><span class="ico"><svg viewBox="0 0 24 24"><path d="M12 3v12M7 10l5 5 5-5M4 19h16"/></svg></span><span data-i="tab.backup"></span></button>
     <button role="tab" data-v="tools" aria-selected="false"><span class="ico"><svg viewBox="0 0 24 24"><path d="M12 3v9"/><path d="M6.3 7.5a8 8 0 1 0 11.4 0"/></svg></span><span data-i="tab.tools"></span></button>

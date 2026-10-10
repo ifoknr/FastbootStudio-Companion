@@ -136,6 +136,7 @@ function show(view) {
   $$('.view').forEach(v => { v.hidden = v.id !== 'v-' + view; });
   if (view === 'log') Log.kick();
   if (view === 'device') Cpu.kick();
+  if (view === 'mods' && !Mods.data) loadMods();
   window.scrollTo(0, 0);
 }
 $$('.nav button').forEach(b => b.addEventListener('click', () => show(b.dataset.v)));
@@ -621,6 +622,70 @@ $('#backupList').addEventListener('click', async e => {
     : `<span style="color:var(--ok)">✓ ${esc(T('backup.ok', result.ok))}</span>`;
 });
 
+/* ---------------------------------------------------------------- modules */
+
+const Mods = { data: null, busy: false };
+
+async function loadMods() {
+  if (Mods.busy) return;
+  Mods.busy = true;
+  const btn = $('#modsScan');
+  btn.disabled = true;
+  btn.textContent = T('mods.scanning');
+  try {
+    Mods.data = await fbsJson('modules');
+    renderMods();
+  } catch (e) {
+    $('#modsSummary').textContent = T('err.generic', e.message || e);
+  }
+  Mods.busy = false;
+  btn.disabled = false;
+  btn.textContent = T('mods.scan');
+}
+$('#modsScan').onclick = loadMods;
+
+function renderMods() {
+  const d = Mods.data;
+  if (!d) return;
+  const byId = Object.fromEntries(d.modules.map(m => [m.id, m]));
+  const name = id => (byId[id] && byId[id].name) || id;
+  const chips = ids => `<div class="mchips">${ids.map(id => `<span class="chip mute">${esc(name(id))}</span>`).join('')}</div>`;
+  const on = d.modules.filter(m => m.enabled && !m.removing).length;
+  const n = d.conflicts.length;
+  const chip = $('#modsChip');
+  chip.textContent = n ? T('mods.found', n) : T('mods.none');
+  chip.className = 'chip ' + (n ? 'danger' : '');
+  $('#modsSummary').textContent = T('mods.count', d.modules.length, on);
+
+  $('#modsConflicts').innerHTML = d.conflicts.map(c => {
+    if (c.kind === 'file') {
+      const more = c.count > c.paths.length ? '\n' + T('conflict.more', c.count - c.paths.length) : '';
+      return `<div class="card conflict"><h3>${esc(T('conflict.file'))}<span class="chip danger">${c.count}</span></h3>${chips(c.modules)}` +
+        `<p class="note">${esc(T('conflict.file.body', c.count))}</p><pre class="paths">${esc(c.paths.join('\n') + more)}</pre></div>`;
+    }
+    if (c.kind === 'replace') {
+      return `<div class="card conflict"><h3>${esc(T('conflict.replace'))}</h3>${chips([c.by, ...c.modules])}` +
+        `<p class="note">${esc(T('conflict.replace.body', name(c.by), c.modules.map(name).join('، ')))}</p><pre class="paths">${esc(c.path)}</pre></div>`;
+    }
+    return `<div class="card conflict prop"><h3>${esc(T('conflict.prop'))}</h3><pre class="paths">${esc(c.key)}</pre>` +
+      `<div class="pvals">${c.values.map(v => `<b>${esc(name(v.module))}</b><code>${esc(v.value)}</code>`).join('')}</div>` +
+      `<p class="note">${esc(T('conflict.prop.body'))}</p></div>`;
+  }).join('');
+
+  $('#modsRows').innerHTML = d.modules.length ? d.modules.map(m => {
+    const flags = [
+      !m.enabled && `<span class="chip mute">${esc(T('flag.off'))}</span>`,
+      m.removing && `<span class="chip danger">${esc(T('flag.removing'))}</span>`,
+      m.enabled && !m.mount && `<span class="chip info">${esc(T('flag.nomount'))}</span>`,
+      m.webui && '<span class="chip">WebUI</span>',
+      m.action && '<span class="chip">Action</span>',
+    ].filter(Boolean).join('');
+    const counts = [m.files && T('mods.files', m.files), m.props && T('mods.props', m.props)].filter(Boolean).join(' · ');
+    return `<tr class="${m.enabled && !m.removing ? '' : 'off'}"><td><div class="mn"><b>${esc(m.name)}</b><small class="ltr">${esc(m.version)}</small></div>` +
+      `<div class="pd">${esc(m.id)}${counts ? ' · ' + esc(counts) : ''}</div></td><td><div class="mflags">${flags}</div></td></tr>`;
+  }).join('') : `<tr><td class="note">${esc(T('mods.empty'))}</td></tr>`;
+}
+
 /* ---------------------------------------------------------------- tools */
 
 function renderTools() {
@@ -687,6 +752,8 @@ function setLang(choice) {
   if (S.info) { renderDevice(); renderTools(); loadBlackBox().catch(() => {}); }
   if (S.parts) { renderParts(); renderSets(); }
   if (S.super) renderSuper(S.super);
+  renderMods();
+  if (!Mods.busy) $('#modsScan').textContent = T('mods.scan');
   Log.updateRules();
   Log.render();
   loadBackups();
@@ -809,7 +876,7 @@ async function start() {
   renderTools();
   Cpu.kick();
   loadBlackBox().catch(() => {});
-  if (['parts', 'log', 'backup', 'tools'].includes(first)) show(first);
+  if (['parts', 'mods', 'log', 'backup', 'tools'].includes(first)) show(first);
   try {
     S.parts = await fbsJson('parts');
     renderParts();

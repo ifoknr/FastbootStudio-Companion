@@ -26,6 +26,7 @@ for lang in en ar; do
     check "group link" 'data-url="https://t.me/BeNeXTBrO"'
     check "link to the Windows app" 'data-url="https://github.com/ifoknr/FastbootStudio/releases/latest"'
     check "day/night button" 'id="themeBtn"'
+    check "modules tab" 'data-v="mods"'
     check "saved backups listed" 'Demo_Phone_DEMO0123456789_20260921-184012'
     if printf '%s' "$dom" | grep -q 'class="card alert"><p class="note"'; then
         echo "FAIL [$lang] the bridge error card is showing"

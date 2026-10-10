@@ -23,6 +23,7 @@ reports under `/sdcard/FastbootStudio`.
 | **Device** | Bootloader and AVB state as the bootloader reported it, even when a hiding module rewrote `ro.boot.verifiedbootstate` · kernel, KMI and security patch · battery health and eMMC/UFS wear · live CPU clocks, temperature and memory |
 | **Black box** | When the last restart was a crash, the previous boot's kernel log (pstore) with the panic lines picked out |
 | **Partitions** | Everything under `by-name` with sizes and a safety tag (critical, boot, never), plus a map of what is inside `super` |
+| **Modules** | Every installed module, and where they get in each other's way: two modules putting the same system file in place, one replacing a whole folder another adds to, or the same property set to different values |
 | **Logs** | Live kernel log and logcat with search and filters. Tap an SELinux denial to get a ready `sepolicy.rule` line, or collect all of them at once |
 | **Backup** | Critical (IMEI, calibration, boot chain), boot (current slot) or full (everything but userdata), each with `SHA256SUMS` and `backup-info.txt`. Verify any backup on the phone |
 | **Tools** | Restart to bootloader, fastbootd, recovery or EDL (Qualcomm), and a support bundle with IMEI, serial and MAC addresses masked |
@@ -90,6 +91,7 @@ root manager with a made-up phone (`?lang=ar`, `?theme=light` and `#log` pick th
 - **الجهاز:** حالة البوت لودر و AVB من البوت لودر نفسه حتى لو مود إخفاء غيّر الخاصية، والكيرنل و KMI، وصحة البطارية والذاكرة، والمعالج لحظياً.
 - **الصندوق الأسود:** إذا الجوال طفى بسبب كراش، يعرض لك لوق الإقلاع اللي قبل مع أسطر الـ panic ملوّنة.
 - **البارتشنات:** كل اللي في by-name بأحجامها، وخريطة لمحتوى super.
+- **المودات:** يكشف التعارض بين المودات: مودين يحطون نفس ملف النظام، أو مود يستبدل مجلد كامل فيخفي ملفات مود ثاني، أو نفس الخاصية بقيم مختلفة.
 - **اللوق:** الكيرنل و logcat لحظياً. اضغط على أي سطر SELinux ويطلع لك قاعدة `sepolicy.rule` جاهزة.
 - **الباك أب:** المهمة أو الإقلاع أو كامل، مع `SHA256SUMS` بنفس صيغة برنامج الويندوز، وتقدر تتحقق منه على الجوال.
 - **أدوات:** إعادة التشغيل للـ bootloader أو fastbootd أو recovery، وحزمة دعم فني تخفي الـ IMEI والسيريال.

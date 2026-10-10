@@ -23,6 +23,8 @@ FBS_LIB=${FBS_LIB:-${0%/*}/../lib}
 . "$FBS_LIB/backup.sh" || exit 1
 # shellcheck source=SCRIPTDIR/../lib/tools.sh
 . "$FBS_LIB/tools.sh" || exit 1
+# shellcheck source=SCRIPTDIR/../lib/modules.sh
+. "$FBS_LIB/modules.sh" || exit 1
 
 usage() {
     cat <<EOF
@@ -39,6 +41,7 @@ fbs $FBS_VERSION ($FBS_CHANNEL), Fastboot Studio Companion
   backup critical|boot|full
                            copy partitions to $DATA/Backups (JSON lines)
   backups                  the backups on the phone (JSON)
+  modules                  installed modules and the conflicts between them (JSON)
   verify <folder>          re-check a backup against its SHA256SUMS (JSON lines)
   reboot bootloader|fastboot|recovery|edl
   bundle [plain]           logs and device info for a bug report, IMEI and serial masked
@@ -59,6 +62,7 @@ case $cmd in
     last) last_text "$@" ;;
     backup) backup_run "$@" ;;
     backups) backups_json ;;
+    modules) modules_json ;;
     verify) verify_run "$@" ;;
     reboot) reboot_to "$@" ;;
     bundle) bundle_run "$@" ;;

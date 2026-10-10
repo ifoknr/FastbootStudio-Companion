@@ -4,7 +4,15 @@
 
 const STRINGS = {
   en: {
-    'tab.device': 'Device', 'tab.parts': 'Partitions', 'tab.log': 'Logs', 'tab.backup': 'Backup', 'tab.tools': 'Tools',
+    'tab.device': 'Device', 'tab.parts': 'Partitions', 'tab.mods': 'Modules',
+    'mods.title': 'Module conflicts', 'mods.count': '{0} modules · {1} on', 'mods.none': 'No conflicts',
+    'mods.found': '{0} conflicts', 'mods.scan': 'Scan again', 'mods.scanning': 'Scanning…', 'mods.list': 'Installed modules',
+    'mods.empty': 'No modules installed.', 'mods.files': '{0} files', 'mods.props': '{0} props',
+    'mods.hint': "Finds modules that put the same system files in place, hide each other's files by replacing a whole folder, or set the same property to different values. Disabled modules are left out.",
+    'conflict.file': 'Same files', 'conflict.file.body': 'These modules put the same {0} file(s) in place. Only one copy is used, so one of them may not work as intended.',
+    'conflict.replace': 'Folder replaced', 'conflict.replace.body': '{0} replaces this whole folder, so what {1} adds inside it is hidden.',
+    'conflict.prop': 'Same property, different values', 'conflict.prop.body': 'Only the value loaded last takes effect.',
+    'conflict.more': '…and {0} more', 'flag.off': 'Off', 'flag.removing': 'Removing', 'flag.nomount': 'No mount', 'tab.log': 'Logs', 'tab.backup': 'Backup', 'tab.tools': 'Tools',
     'yes': 'yes', 'no': 'no',
 
     'boot.title': 'Boot and security', 'boot.bootloader': 'Bootloader', 'boot.locked': 'locked', 'boot.unlocked': 'unlocked',
@@ -69,7 +77,15 @@ const STRINGS = {
     'demo': 'Demo data. Open this page from your root manager to see your own phone.',
   },
   ar: {
-    'tab.device': 'الجهاز', 'tab.parts': 'البارتشنات', 'tab.log': 'اللوق', 'tab.backup': 'باك أب', 'tab.tools': 'أدوات',
+    'tab.device': 'الجهاز', 'tab.parts': 'البارتشنات', 'tab.mods': 'المودات',
+    'mods.title': 'تعارض المودات', 'mods.count': '{0} مود · {1} مفعّل', 'mods.none': 'ما فيه تعارض',
+    'mods.found': '{0} تعارض', 'mods.scan': 'افحص من جديد', 'mods.scanning': 'يفحص…', 'mods.list': 'المودات المثبتة',
+    'mods.empty': 'ما فيه مودات مثبتة.', 'mods.files': '{0} ملف', 'mods.props': '{0} خاصية',
+    'mods.hint': 'يفحص المودات اللي تحط نفس ملفات النظام، أو تخفي ملفات بعض لما تستبدل مجلد كامل، أو تحط نفس الخاصية بقيم مختلفة. المودات المعطّلة ما تنحسب.',
+    'conflict.file': 'نفس الملفات', 'conflict.file.body': 'هالمودات تحط نفس الملفات ({0}). نسخة وحدة بس تشتغل، فممكن واحد منهم ما يشتغل صح.',
+    'conflict.replace': 'مجلد مستبدل', 'conflict.replace.body': '{0} يستبدل هالمجلد كامل، فاللي يضيفه {1} داخله ما يبان.',
+    'conflict.prop': 'نفس الخاصية بقيم مختلفة', 'conflict.prop.body': 'القيمة اللي تنحمّل آخر شي هي اللي تشتغل.',
+    'conflict.more': '…و {0} غيرها', 'flag.off': 'معطّل', 'flag.removing': 'بينحذف', 'flag.nomount': 'بدون تركيب', 'tab.log': 'اللوق', 'tab.backup': 'باك أب', 'tab.tools': 'أدوات',
     'yes': 'نعم', 'no': 'لا',
 
     'boot.title': 'الإقلاع والحماية', 'boot.bootloader': 'البوت لودر', 'boot.locked': 'مقفول', 'boot.unlocked': 'مفتوح',

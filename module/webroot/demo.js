@@ -121,6 +121,8 @@
       case 'backups': return JSON.stringify({ root: '/sdcard/FastbootStudio/Backups', items: backups });
       case 'bundle': return JSON.stringify({ ok: true, file: '/sdcard/FastbootStudio/Reports/companion-report_20261009-211407.tar.gz', redacted: a1 !== 'plain' });
       case 'reboot': return JSON.stringify({ ok: true });
+      case 'open': return JSON.stringify({ ok: true });
+      case 'modules': return JSON.stringify(modules);
       default: return '';
     }
   }
@@ -145,6 +147,28 @@
     backups.unshift({ name: folder, files: list.length, kb: out[0].kb, sums: true });
     return out;
   }
+
+  const m = (id, name, version, extra) => ({ id, name, version, author: 'demo', enabled: true, removing: false, mount: true, files: 0, props: 0, scripts: [], webui: false, action: false, ...extra });
+  const modules = {
+    root: '/data/adb/modules',
+    modules: [
+      m('fastboot_studio_companion', 'Fastboot Studio Companion (Beta)', 'v2.3.0', { webui: true, action: true }),
+      m('systemless_hosts', 'Systemless Hosts', 'v1.2', { files: 1 }),
+      m('adblock_plus', 'AdBlock Plus', 'v4.0', { files: 1, props: 2, scripts: ['service.sh'] }),
+      m('google_sans_font', 'Google Sans Font', 'v3.1', { files: 46 }),
+      m('ios_emoji', 'iOS Emoji', 'v17.4', { files: 31 }),
+      m('debloater', 'Debloater', 'v2.0', { files: 12, props: 1 }),
+      m('youtube_vanced', 'YouTube Patched', 'v19.16', { files: 4, webui: true }),
+      m('gpu_tweaks', 'GPU Tweaks', 'v1.5', { props: 3, scripts: ['post-fs-data.sh'] }),
+      m('old_tweaks', 'Old Tweaks', 'v0.9', { enabled: false }),
+    ],
+    conflicts: [
+      { kind: 'file', modules: ['adblock_plus', 'systemless_hosts'], count: 1, paths: ['/system/etc/hosts'] },
+      { kind: 'file', modules: ['google_sans_font', 'ios_emoji'], count: 3, paths: ['/system/fonts/NotoColorEmoji.ttf', '/system/fonts/NotoColorEmojiFlags.ttf', '/system/etc/fonts.xml'] },
+      { kind: 'replace', path: '/system/app/YouTube', by: 'debloater', modules: ['youtube_vanced'] },
+      { kind: 'prop', key: 'debug.hwui.renderer', values: [{ module: 'debloater', value: 'skiagl' }, { module: 'gpu_tweaks', value: 'skiavk' }] },
+    ],
+  };
 
   const unquote = s => [...s.matchAll(/'((?:[^']|'\\'')*)'/g)].map(m => m[1].split("'\\''").join("'"));
 
