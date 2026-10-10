@@ -61,6 +61,14 @@ su -c sh /data/adb/modules/fastboot_studio_companion/bin/fbs info
 su -c sh /data/adb/modules/fastboot_studio_companion/bin/fbs help
 ```
 
+## Help and news
+
+- Telegram group: https://t.me/BeNeXTBrO
+- Private message: https://t.me/IFOKNR1
+- Fastboot Studio for Windows: https://github.com/ifoknr/FastbootStudio/releases/latest
+
+The same links are in the WebUI, under the backups and in About.
+
 ## Development
 
 ```
@@ -87,6 +95,9 @@ root manager with a made-up phone (`?lang=ar`, `?theme=light` and `#log` pick th
 - **أدوات:** إعادة التشغيل للـ bootloader أو fastbootd أو recovery، وحزمة دعم فني تخفي الـ IMEI والسيريال.
 
 ![WebUI](docs/webui-ar.png)
+
+- قروب تيليجرام: https://t.me/BeNeXTBrO
+- الخاص: https://t.me/IFOKNR1
 
 ## License
 

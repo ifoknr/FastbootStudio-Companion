@@ -728,10 +728,10 @@ $$('#themeSeg button').forEach(b => b.addEventListener('click', () => {
 
 /* ---------------------------------------------------------------- links */
 
-// group stays empty until there is a link for it; an empty entry is not shown.
+// An entry with an empty url is not shown.
 const LINKS = [
   { id: 'app', url: 'https://github.com/ifoknr/FastbootStudio/releases/latest', icon: '<rect x="3" y="4" width="18" height="12" rx="2"/><path d="M8 20h8M12 16v4"/>' },
-  { id: 'group', url: '', icon: '<circle cx="9" cy="8" r="3.2"/><path d="M3 20c0-3.3 2.7-6 6-6s6 2.7 6 6"/><path d="M16 4.5a3 3 0 0 1 0 6M18 14.5c1.8.8 3 2.7 3 5.5"/>' },
+  { id: 'group', url: 'https://t.me/BeNeXTBrO', icon: '<circle cx="9" cy="8" r="3.2"/><path d="M3 20c0-3.3 2.7-6 6-6s6 2.7 6 6"/><path d="M16 4.5a3 3 0 0 1 0 6M18 14.5c1.8.8 3 2.7 3 5.5"/>' },
   { id: 'dm', url: 'https://t.me/IFOKNR1', icon: '<path d="M21 4 3 11l7 2.5L12.5 21 21 4z"/><path d="m10 13.5 4.5-4.5"/>' },
   { id: 'source', url: 'https://github.com/ifoknr/FastbootStudio-Companion', icon: '<path d="m8 8-4 4 4 4M16 8l4 4-4 4M13.5 5l-3 14"/>' },
 ];

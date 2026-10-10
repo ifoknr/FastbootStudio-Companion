@@ -23,6 +23,7 @@ for lang in en ar; do
     check "reboot targets listed" 'data-r="bootloader"'
     check "beta badge shown" 'id="betaChip" data-i="beta">'
     check "links listed" 'data-url="https://t.me/IFOKNR1"'
+    check "group link" 'data-url="https://t.me/BeNeXTBrO"'
     check "link to the Windows app" 'data-url="https://github.com/ifoknr/FastbootStudio/releases/latest"'
     check "day/night button" 'id="themeBtn"'
     check "saved backups listed" 'Demo_Phone_DEMO0123456789_20260921-184012'
