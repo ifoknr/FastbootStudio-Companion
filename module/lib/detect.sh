@@ -145,6 +145,21 @@ info_json() {
         "$I_MEM_TOTAL" "$I_MEM_AVAIL" "$(storage_json)"
 }
 
+# key=value lines for Fastboot Studio on Windows, which reads them over adb (through su) and
+# keeps them per serial number: the kernel and patch level it checks a boot image against
+# before flashing, and what the device page shows about the phone. The first five keys are the
+# ones the app also reads without root (DeviceFacts.Command); values never contain newlines.
+facts_text() {
+    collect
+    _c=$(modules_json 2>/dev/null | grep -o '"kind":' | wc -l)
+    _vpatch=$(prop ro.vendor.build.security_patch)
+    for _kv in "kernel=$I_KERNEL" "patch=$I_PATCH" "vendor_patch=$_vpatch" "model=$I_MODEL" "android=$I_ANDROID" \
+        "companion=$FBS_VERSION $FBS_CHANNEL" "root=$I_ROOT" "avb=$I_VBSTATE" "device_state=$I_DEVSTATE" \
+        "spoofed=$I_VB_SPOOFED" "selinux=$I_SELINUX" "kmi=$I_KMI" "conflicts=$((_c + 0))"; do
+        printf '%s\n' "$_kv" | tr -d '\r\t'
+    done
+}
+
 # Plain text for the Action button's console.
 report_text() {
     collect

@@ -32,6 +32,7 @@ fbs $FBS_VERSION ($FBS_CHANNEL), Fastboot Studio Companion
 
   info                     device, boot state, kernel, battery and storage (JSON)
   report                   the same, as text
+  facts                    key=value lines for Fastboot Studio on Windows
   parts                    partitions under by-name with sizes in sectors (JSON)
   super                    logical partitions inside super (JSON)
   cpu                      core clocks, temperature and memory, one line (JSON)
@@ -55,6 +56,7 @@ cmd=$1
 case $cmd in
     info) info_json ;;
     report) report_text ;;
+    facts) facts_text ;;
     parts) parts_json ;;
     super) super_json ;;
     cpu) cpu_json ;;

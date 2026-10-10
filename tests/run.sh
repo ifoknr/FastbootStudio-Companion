@@ -199,6 +199,14 @@ for SHN in $SHELLS; do
     out=$(fbs report)
     expect "report counts conflicts" sh -c 'printf "%s" "$1" | grep -q "^Conflicts  *4 between modules$"' _ "$out"
 
+    # ---- facts for the Windows app
+    out=$(fbs facts)
+    expect "facts: kernel first" sh -c 'printf "%s\n" "$1" | head -n 1 | grep -qx "kernel=5.15.148-android13-8-00017-gabc123"' _ "$out"
+    expect "facts: companion version and channel" sh -c 'printf "%s\n" "$1" | grep -qx "companion=[0-9.]* \(beta\|stable\)"' _ "$out"
+    expect "facts: root, AVB from the bootloader, spoofing" sh -c 'printf "%s\n" "$1" | grep -qx "root=KernelSU" && printf "%s\n" "$1" | grep -qx "avb=orange" && printf "%s\n" "$1" | grep -qx "spoofed=true"' _ "$out"
+    expect "facts: conflicts counted" sh -c 'printf "%s\n" "$1" | grep -qx "conflicts=4"' _ "$out"
+    expect "facts: every line is key=value" sh -c '! printf "%s\n" "$1" | grep -qv "^[a-z_]*="' _ "$out"
+
     # ---- open
     rm -f "$R/am.log"
     out=$(fbs open https://t.me/IFOKNR1)
