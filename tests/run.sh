@@ -113,6 +113,11 @@ for SHN in $SHELLS; do
     rm -f "$R/sys/fs/pstore/dmesg-ramoops-0"
 
     # ---- backup: critical
+    # A backup cut off earlier: hidden from fbs backups and the Phone page, removed by the next one.
+    mkdir -p "$WORK/data/Backups/.partial-Demo_Phone_DEMO0123456789_20260101-000000"
+    : > "$WORK/data/Backups/.partial-Demo_Phone_DEMO0123456789_20260101-000000/boot_a.img"
+    out=$(fbs backups)
+    expect "an unfinished backup is not listed" jqt "$out" '.items | length == 0'
     out=$(fbs backup critical)
     expect "backup events are JSON lines" jql "$out" 'length > 2'
     expect "critical plan" jql "$out" '.[0].event == "plan" and .[0].count == 11'
@@ -126,6 +131,8 @@ for SHN in $SHELLS; do
     expect "backup-info header" sh -c 'head -n 1 "$1" | grep -qx "Fastboot Studio backup"' _ "$dir/backup-info.txt"
     expect "backup-info table is tab-separated" sh -c 'grep -q "^nvram	4096	[0-9a-f]\{64\}$" "$1"' _ "$dir/backup-info.txt"
     expect "backup-info mode" grep -q "^mode	companion$" "$dir/backup-info.txt"
+    expect "backup-info names the set" grep -q "^set	critical$" "$dir/backup-info.txt"
+    expect "written under a hidden name, renamed when done" sh -c '! ls -a "$1" | grep -q "^\.partial-"' _ "$WORK/data/Backups"
     expect "lock released" test ! -e "$WORK/run/backup.pid"
 
     # ---- backup: boot (current slot only)
@@ -167,6 +174,8 @@ for SHN in $SHELLS; do
         '(.[] | select(.name == "nvram.img") | .state == "bad") and .[-1].bad == 1'
     out=$(fbs verify ../etc)
     expect "verify stays inside Backups" jqt "$out" '.event == "error"'
+    out=$(fbs verify ".partial-$name")
+    expect "verify skips unfinished backups" jqt "$out" '.event == "error"'
 
     # ---- reboot
     rm -f "$R/reboot.log"
@@ -206,6 +215,26 @@ for SHN in $SHELLS; do
     expect "facts: root, AVB from the bootloader, spoofing" sh -c 'printf "%s\n" "$1" | grep -qx "root=KernelSU" && printf "%s\n" "$1" | grep -qx "avb=orange" && printf "%s\n" "$1" | grep -qx "spoofed=true"' _ "$out"
     expect "facts: conflicts counted" sh -c 'printf "%s\n" "$1" | grep -qx "conflicts=4"' _ "$out"
     expect "facts: every line is key=value" sh -c '! printf "%s\n" "$1" | grep -qv "^[a-z_]*="' _ "$out"
+
+    # ---- what Fastboot Studio's Phone page reads (PhoneReport.cs): it runs "fbs info", a line
+    # "@@" and "fbs modules" through su, finds the info by its leading {"fbs", and reads these keys.
+    out=$(fbs info)
+    expect "phone page: info starts with fbs" sh -c 'printf "%s" "$1" | head -c 7 | grep -qx "{\"fbs\":"' _ "$out"
+    expect "phone page: device keys" jqt "$out" \
+        '[.fbs, .channel, .model, .brand, .device, .android, .sdk, .patch, .platform, .soc, .arch, .slot, .kernel, .selinux, .root] | all(type == "string")'
+    expect "phone page: dynamic is a boolean" jqt "$out" '.dynamic | type == "boolean"'
+    expect "phone page: boot keys" jqt "$out" \
+        '(.boot.vbstate | type == "string") and (.boot.device_state | type == "string") and (.boot.locked | type == "boolean") and (.boot.spoofed | type == "boolean")'
+    expect "phone page: battery numbers" jqt "$out" '[.battery.level, .battery.health, .battery.cycles] | all(type == "number")'
+    expect "phone page: storage keys" jqt "$out" '[.storage.type, .storage.life_a, .storage.life_b, .storage.eol] | all(type == "string")'
+    out=$(fbs modules)
+    expect "phone page: modules have id and name" jqt "$out" '.modules | all((.id | type == "string") and (.name | type == "string"))'
+    expect "phone page: file conflicts" jqt "$out" \
+        '[.conflicts[] | select(.kind == "file")] | all((.modules | type == "array") and (.paths | type == "array") and (.count | type == "number"))'
+    expect "phone page: replace conflicts" jqt "$out" \
+        '[.conflicts[] | select(.kind == "replace")] | all((.path | type == "string") and (.by | type == "string") and (.modules | type == "array"))'
+    expect "phone page: prop conflicts" jqt "$out" \
+        '[.conflicts[] | select(.kind == "prop")] | all((.key | type == "string") and (.values | all((.module | type == "string") and (.value | type == "string"))))'
 
     # ---- open
     rm -f "$R/am.log"

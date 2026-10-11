@@ -2,19 +2,31 @@
 
 <!-- The "## vX.Y.Z" section is the release notes and the Telegram post (.github/scripts/telegram-release.sh): keep it short. -->
 
+## v2.5.0
+- متوافق مع صفحة «الجوال» في Fastboot Studio v2.5.0: المواصفات والحماية والتعارضات والنسخ الاحتياطية
+- النسخة الاحتياطية تنكتب في مجلد مخفي وما يطلع اسمها إلا لما تكتمل، فالبرنامج ما ينقل نسخة ناقصة
+- النسخة اللي انقطعت تنحذف تلقائي مع النسخة الجاية
+- ملف backup-info.txt يذكر نوع النسخة (حرجة، إقلاع، كاملة)
+
+**English**
+- Works with the Phone page in Fastboot Studio v2.5.0: specs, security, conflicts and backups
+- A backup is written to a hidden folder and named only when complete, so the app never copies a half-written one
+- A backup that was cut off is removed by the next one
+- backup-info.txt names the set (critical, boot, full)
+
 ## v2.4.0
 - تبويب الوحدات: يكشف التعارض بين مودات الروت (ملف مكرر، مجلد مستبدل، خاصية بقيمتين)
 - تصميم للتابلت والشاشات الكبيرة، وخط وقوائم أكبر
 - وضع ليلي ونهاري، والتلقائي يمشي مع الجوال
 - روابط البرنامج والقروب والخاص والسورس
-- أمر fbs facts لنسخة Fastboot Studio الجاية على الويندوز
+- أمر fbs facts يقرا منه Fastboot Studio v2.4.0 على الويندوز
 
 **English**
 - Modules tab: finds conflicts between root modules (shared files, replaced folders, clashing props)
 - Layout for tablets and large screens, bigger text and lists
 - Day and night themes; Auto follows the phone
 - Links to the Windows app, the Telegram group, private chat and the source
-- fbs facts, for the next Fastboot Studio on Windows
+- fbs facts, read by Fastboot Studio v2.4.0 on Windows
 
 ## v2.3.0
 - إصدار تجريبي (Beta)، ورقمه نفس Fastboot Studio v2.3.0

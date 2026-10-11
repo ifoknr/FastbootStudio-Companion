@@ -1,9 +1,9 @@
 # Fastboot Studio Companion
 
-> **Beta.** This module is experimental (v2.4.0). Its version numbers go along with Fastboot Studio's,
+> **Beta.** This module is experimental (v2.5.0). Its version numbers go along with Fastboot Studio's,
 > and releases are published as pre-releases until it is marked stable.
 >
-> **تجريبي.** الوحدة في مرحلة تجريبية (v2.4.0)، وأرقام إصداراتها تمشي مع أرقام Fastboot Studio، وإصداراتها تنزل كإصدارات تجريبية لين تصير مستقرة.
+> **تجريبي.** الوحدة في مرحلة تجريبية (v2.5.0)، وأرقام إصداراتها تمشي مع أرقام Fastboot Studio، وإصداراتها تنزل كإصدارات تجريبية لين تصير مستقرة.
 
 A root module for **Magisk, KernelSU and APatch** that goes with
 [Fastboot Studio](https://github.com/ifoknr/FastbootStudio) on Windows. It shows what your phone
@@ -54,11 +54,20 @@ Copy it to your PC and check or restore it from Fastboot Studio.
 
 ## With Fastboot Studio on Windows
 
-When the phone is connected in Android, Fastboot Studio (the release after v2.3.0) reads `fbs facts` over adb (through su)
-and keeps it for that phone: the kernel and KMI it checks a boot image against before flashing,
-the root manager (it asks before flashing an image rooted with another one), the AVB state and
-how many module conflicts there are. The device page shows them, even once the phone is in the
-bootloader.
+When the phone is connected in Android, Fastboot Studio reads the module over adb (through su):
+
+- **v2.4.0 and later, Device page:** `fbs facts`, kept for that phone. That gives the kernel and
+  KMI it checks a boot image against before flashing, the root manager (it asks before flashing an
+  image rooted with another one), the AVB state and how many module conflicts there are. It still
+  shows them once the phone is in the bootloader.
+- **v2.5.0 and later, Phone page:** `fbs info` and `fbs modules`. That gives the phone's specs,
+  the bootloader's own AVB state, the root manager, storage wear and each module conflict. It also
+  lists the backups in `/sdcard/FastbootStudio/Backups`, then copies one to the PC and checks it
+  against `SHA256SUMS` in one click (no root needed for that part).
+
+A backup is written to a hidden `.partial-…` folder and gets its name only when it is done, so the
+Phone page never offers one that is still being written. `tests/run.sh` checks every key the
+Phone page reads, so a change here cannot break it unnoticed.
 
 ## Command line
 

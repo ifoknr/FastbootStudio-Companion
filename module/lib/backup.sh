@@ -5,6 +5,10 @@
 #     SHA256SUMS        "hash  name.img", as sha256sum writes it
 #     backup-info.txt   tab-separated header and a partition / bytes / sha256 table
 #
+# A backup is written to a hidden .partial-<name> folder and gets its name when it is done, so
+# Fastboot Studio's Phone page (which lists and copies these folders over adb) and fbs backups
+# never see one that is still being written or was cut off.
+#
 # Long jobs print one JSON object per line so the WebUI can show progress as it goes.
 
 # fbs backup critical|boot|full
@@ -70,6 +74,11 @@ backup_run() {
         echo '{"event":"error","msg":"storage"}'
         return 1
     }
+    # Left by a backup that was cut off (the phone restarted, the job was killed). Only one
+    # backup runs at a time, so none of these is still being written.
+    for _old in "$DATA"/Backups/.partial-*/; do
+        [ -d "$_old" ] && rm -rf "${_old%/}"
+    done
     _free=$(df -Pk "$DATA/Backups" 2>/dev/null | tail -n 1 | { read -r _ _ _ _a _; echo "$_a"; })
     num "$_free"
     # Keep 256 MiB spare so a full backup never fills the phone to the last byte.
@@ -81,7 +90,7 @@ backup_run() {
     _model=$(prop ro.product.model)
     _serial=$(prop ro.serialno)
     _name="$(safe_name "${_model:-device}")_$(safe_name "${_serial:-unknown}")_$(date +%Y%m%d-%H%M%S)"
-    _out=$DATA/Backups/$_name
+    _out=$DATA/Backups/.partial-$_name
     mkdir -p "$_out" || {
         echo '{"event":"error","msg":"storage"}'
         return 1
@@ -119,11 +128,16 @@ backup_run() {
             printf 'model\t%s\n' "$_model"
             printf 'product\t%s\n' "$(prop ro.product.name)"
             printf 'mode\tcompanion\n'
+            printf 'set\t%s\n' "$_set"
             printf 'source\t%s\n' "/dev/block/by-name"
             echo ""
             printf 'partition\tbytes\tsha256\n'
             printf '%s' "$_table"
         } > "$_out/backup-info.txt"
+        mv "$_out" "$DATA/Backups/$_name" || {
+            echo '{"event":"error","msg":"storage"}'
+            return 1
+        }
     else
         rmdir "$_out" 2>/dev/null
     fi
