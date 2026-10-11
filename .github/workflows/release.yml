@@ -44,6 +44,8 @@ jobs:
       - name: Release notes from CHANGELOG.md
         run: |
           awk -v v="## $RELEASE_VERSION" '$0 == v { on = 1; next } /^## / { on = 0 } on' CHANGELOG.md > notes.md
+          base="https://github.com/$GITHUB_REPOSITORY/blob/$RELEASE_VERSION"
+          echo "Full changelog: [CHANGELOG.md]($base/CHANGELOG.md) · [README]($base/README.md) · [العربية]($base/README.ar.md)" >> notes.md
           cat notes.md
 
       - name: Publish
