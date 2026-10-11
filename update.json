@@ -1,6 +1,6 @@
 {
-  "version": "v2.3.0",
-  "versionCode": 230,
-  "zipUrl": "https://github.com/ifoknr/FastbootStudio-Companion/releases/download/v2.3.0/FastbootStudio-Companion-v2.3.0.zip",
+  "version": "v2.4.0",
+  "versionCode": 240,
+  "zipUrl": "https://github.com/ifoknr/FastbootStudio-Companion/releases/download/v2.4.0/FastbootStudio-Companion-v2.4.0.zip",
   "changelog": "https://raw.githubusercontent.com/ifoknr/FastbootStudio-Companion/main/CHANGELOG.md"
 }

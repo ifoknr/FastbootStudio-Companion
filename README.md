@@ -1,9 +1,9 @@
 # Fastboot Studio Companion
 
-> **Beta.** This module is experimental. Its version follows Fastboot Studio (v2.3.0), and releases
-> are published as pre-releases until it is marked stable.
+> **Beta.** This module is experimental (v2.4.0). Its version numbers go along with Fastboot Studio's,
+> and releases are published as pre-releases until it is marked stable.
 >
-> **تجريبي.** الوحدة في مرحلة تجريبية، ورقم إصدارها نفس Fastboot Studio (v2.3.0)، وإصداراتها تنزل كإصدارات تجريبية لين تصير مستقرة.
+> **تجريبي.** الوحدة في مرحلة تجريبية (v2.4.0)، وأرقام إصداراتها تمشي مع أرقام Fastboot Studio، وإصداراتها تنزل كإصدارات تجريبية لين تصير مستقرة.
 
 A root module for **Magisk, KernelSU and APatch** that goes with
 [Fastboot Studio](https://github.com/ifoknr/FastbootStudio) on Windows. It shows what your phone
@@ -54,7 +54,7 @@ Copy it to your PC and check or restore it from Fastboot Studio.
 
 ## With Fastboot Studio on Windows
 
-When the phone is connected in Android, Fastboot Studio reads `fbs facts` over adb (through su)
+When the phone is connected in Android, Fastboot Studio (the release after v2.3.0) reads `fbs facts` over adb (through su)
 and keeps it for that phone: the kernel and KMI it checks a boot image against before flashing,
 the root manager (it asks before flashing an image rooted with another one), the AVB state and
 how many module conflicts there are. The device page shows them, even once the phone is in the
