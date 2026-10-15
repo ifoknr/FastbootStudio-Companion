@@ -13,7 +13,7 @@
   <img alt="Magisk | KernelSU | APatch" src="https://img.shields.io/badge/root-Magisk%20%7C%20KernelSU%20%7C%20APatch-0E1116?style=flat-square&labelColor=1D222B">
   <img alt="Languages" src="https://img.shields.io/badge/UI-English%20%7C%20%D8%A7%D9%84%D8%B9%D8%B1%D8%A8%D9%8A%D8%A9-0E1116?style=flat-square&labelColor=1D222B">
   <a href="https://github.com/ifoknr/FastbootStudio-Companion/releases"><img alt="Latest release" src="https://img.shields.io/github/v/release/ifoknr/FastbootStudio-Companion?include_prereleases&style=flat-square&labelColor=1D222B&color=2DD4BF&label=release"></a>
-  <img alt="Beta" src="https://img.shields.io/badge/status-beta-0E1116?style=flat-square&labelColor=1D222B&color=F5C451">
+  <img alt="Stable" src="https://img.shields.io/badge/status-stable-0E1116?style=flat-square&labelColor=1D222B&color=2DD4BF">
   <img alt="License MIT" src="https://img.shields.io/badge/license-MIT-0E1116?style=flat-square&labelColor=1D222B">
   <a href="https://t.me/BeNeXTBrO"><img alt="Telegram group" src="https://img.shields.io/badge/Telegram-group-0E1116?style=flat-square&labelColor=1D222B&color=229ED9"></a>
 </p>
@@ -26,8 +26,11 @@
 **للقراءة فقط.** ما يشتغل شي وقت الإقلاع (لا `service.sh` ولا `post-fs-data.sh`)، فما يسبب بوت
 لوب، وما يكتب على أي بارتشن. الكتابة الوحيدة هي النسخ الاحتياطية والتقارير في `/sdcard/FastbootStudio`.
 
-> 🧪 **تجريبي.** الوحدة في مرحلة تجريبية، وأرقام إصداراتها تمشي مع أرقام Fastboot Studio،
-> وإصداراتها تنزل كإصدارات تجريبية لين تصير مستقرة.
+> ✅ **مستقرة من 2.5.1.** وأرقام إصداراتها تمشي مع أرقام Fastboot Studio.
+>
+> **الجديد في 2.5.1:**
+> - طلعت من التجريبي: أول إصدار رسمي.
+> - تحذف النسخة الاحتياطية من الجوال مباشرة من تبويب الباك أب (`fbs delete`).
 >
 > **الجديد في 2.5:**
 > - متوافقة مع صفحة **الجوال** في Fastboot Studio 2.5: المواصفات والحماية والتعارضات والنسخ الاحتياطية.

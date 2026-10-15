@@ -165,6 +165,28 @@ backups_json() {
     printf ']}\n'
 }
 
+# fbs delete <folder name>: removes one finished backup. Only a folder directly under Backups,
+# never an unfinished .partial- one (the running backup cleans those up itself).
+delete_run() {
+    case $1 in
+        '' | */* | .*)
+            echo '{"ok":false,"msg":"usage: fbs delete <folder name>"}'
+            return 2
+            ;;
+    esac
+    _out=$DATA/Backups/$1
+    if [ ! -d "$_out" ]; then
+        echo '{"ok":false,"msg":"missing"}'
+        return 1
+    fi
+    if rm -rf "$_out"; then
+        printf '{"ok":true,"folder":%s}\n' "$(js "$1")"
+    else
+        echo '{"ok":false,"msg":"storage"}'
+        return 1
+    fi
+}
+
 # fbs verify <folder name>: re-hashes every file listed in SHA256SUMS.
 verify_run() {
     case $1 in

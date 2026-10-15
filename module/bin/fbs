@@ -5,10 +5,10 @@
 # (or one JSON object per line for long jobs), so all three always agree. Nothing here writes
 # to a partition: the only writes are backups and reports under /sdcard/FastbootStudio.
 
-FBS_VERSION=2.5.0
+FBS_VERSION=2.5.1
 # beta while the module is experimental; stable once it is not. release.yml publishes a beta
 # as a pre-release, the WebUI shows a Beta badge, and tools/build.sh checks module.prop agrees.
-FBS_CHANNEL=beta
+FBS_CHANNEL=stable
 FBS_LIB=${FBS_LIB:-${0%/*}/../lib}
 
 # shellcheck source=SCRIPTDIR/../lib/common.sh
@@ -44,6 +44,7 @@ fbs $FBS_VERSION ($FBS_CHANNEL), Fastboot Studio Companion
   backups                  the backups on the phone (JSON)
   modules                  installed modules and the conflicts between them (JSON)
   verify <folder>          re-check a backup against its SHA256SUMS (JSON lines)
+  delete <folder>          remove one backup from the phone (JSON)
   reboot bootloader|fastboot|recovery|edl
   bundle [plain]           logs and device info for a bug report, IMEI and serial masked
   open <https url>         open a link in the app that owns it (Telegram, the browser)
@@ -66,6 +67,7 @@ case $cmd in
     backups) backups_json ;;
     modules) modules_json ;;
     verify) verify_run "$@" ;;
+    delete) delete_run "$@" ;;
     reboot) reboot_to "$@" ;;
     bundle) bundle_run "$@" ;;
     open) open_url "$@" ;;

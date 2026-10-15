@@ -127,6 +127,7 @@ main { padding: 1rem 1rem calc(var(--bottom) + 6rem); max-width: 1500px; margin:
 .fbtn.rules { margin-inline-start: auto; border-color: var(--info-line); color: var(--info); background: var(--info-soft); }
 .btn-s { background: var(--raised); border: 1px solid var(--line); border-radius: .7rem; padding: .55rem .9rem; cursor: pointer; font-size: .9rem; color: var(--dim); white-space: nowrap; }
 .btn-s[aria-pressed="true"] { color: var(--warn); border-color: var(--warn-line); background: var(--warn-soft); }
+.btn-s.danger { color: var(--danger); border-color: var(--danger-line); }
 .seg { display: grid; grid-template-columns: 1fr 1fr; background: var(--raised); border: 1px solid var(--line); border-radius: .7rem; padding: .2rem; gap: .2rem; }
 .seg.three { grid-template-columns: 1fr 1fr 1fr; }
 .seg button { background: none; border: 0; border-radius: .55rem; padding: .5rem; font-size: .9rem; cursor: pointer; color: var(--dim); }
@@ -190,11 +191,12 @@ main { padding: 1rem 1rem calc(var(--bottom) + 6rem); max-width: 1500px; margin:
 .prow .st.ok { color: var(--ok); } .prow .st.bad { color: var(--danger); }
 
 .blist { display: flex; flex-direction: column; gap: .8rem; }
-.bitem { display: grid; grid-template-columns: 1fr auto; gap: .15rem .5rem; align-items: center; font-size: .9rem; }
+.bitem { display: grid; grid-template-columns: 1fr auto auto; gap: .15rem .5rem; align-items: center; font-size: .9rem; }
 .bitem .p { font-family: var(--mono); font-size: .8rem; direction: ltr; unicode-bidi: isolate; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
 [dir="rtl"] .bitem .p { text-align: right; }
-.bitem .m { color: var(--faint); font-size: .8rem; }
-.bitem button { grid-row: span 2; }
+.bitem .m { color: var(--faint); font-size: .8rem; grid-column: 1; grid-row: 2; }
+.bitem .p { grid-column: 1; grid-row: 1; }
+.bitem button { grid-row: 1 / span 2; }
 
 /* Links to the Windows app, the group and a private message. */
 .links { display: grid; grid-template-columns: repeat(auto-fit, minmax(12rem, 1fr)); gap: .5rem; margin-top: .9rem; }
