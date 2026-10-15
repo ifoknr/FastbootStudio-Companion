@@ -177,6 +177,20 @@ for SHN in $SHELLS; do
     out=$(fbs verify ".partial-$name")
     expect "verify skips unfinished backups" jqt "$out" '.event == "error"'
 
+    # ---- delete
+    out=$(fbs delete ../etc)
+    expect "delete stays inside Backups" jqt "$out" '.ok == false'
+    expect "delete leaves other folders alone" test -d "$WORK/data/Backups"
+    out=$(fbs delete ".partial-x")
+    expect "delete refuses hidden folders" jqt "$out" '.ok == false'
+    out=$(fbs delete "no-such-backup")
+    expect "delete reports a missing backup" jqt "$out" '.ok == false and .msg == "missing"'
+    out=$(fbs delete "$name")
+    expect "delete removes the backup" jqt "$out" '.ok == true'
+    expect "deleted folder is gone" test ! -e "$dir"
+    out=$(fbs backups)
+    expect "two backups left" jqt "$out" '.items | length == 2'
+
     # ---- reboot
     rm -f "$R/reboot.log"
     fbs reboot bootloader > /dev/null

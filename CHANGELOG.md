@@ -2,6 +2,16 @@
 
 <!-- The "## vX.Y.Z" section is the release notes and the Telegram post (.github/scripts/telegram-release.sh): keep it short. -->
 
+## v2.5.1
+- أول إصدار رسمي: الإضافة طلعت من التجريبي (Beta)
+- زر «حذف» لكل نسخة احتياطية في تبويب الباك أب، مع تأكيد قبل الحذف
+- أمر fbs delete يحذف نسخة وحدة من مجلد Backups بس
+
+**English**
+- First stable release: the module is out of beta
+- A Delete button for each backup in the Backup tab, with a confirmation first
+- fbs delete removes one backup, and only inside the Backups folder
+
 ## v2.5.0
 - متوافق مع صفحة «الجوال» في Fastboot Studio v2.5.0: المواصفات والحماية والتعارضات والنسخ الاحتياطية
 - النسخة الاحتياطية تنكتب في مجلد مخفي وما يطلع اسمها إلا لما تكتمل، فالبرنامج ما ينقل نسخة ناقصة

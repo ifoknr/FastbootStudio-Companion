@@ -22,7 +22,7 @@
   ];
 
   const info = {
-    fbs: '2.5.0', channel: 'beta', model: 'Demo Phone', brand: 'Demo', device: 'demo', product: 'demo_mt6789',
+    fbs: '2.5.1', channel: 'stable', model: 'Demo Phone', brand: 'Demo', device: 'demo', product: 'demo_mt6789',
     android: '14', sdk: '34', patch: '2026-08-05', build: 'DEMO-14.0.1', platform: 'mt6789', soc: 'mediatek',
     arch: 'arm64-v8a', slot: '_a', dynamic: true, treble: true, vndk: '34',
     boot: { vbstate: 'orange', device_state: 'unlocked', locked: false, spoofed: true },
@@ -123,6 +123,12 @@
       case 'reboot': return JSON.stringify({ ok: true });
       case 'open': return JSON.stringify({ ok: true });
       case 'modules': return JSON.stringify(modules);
+      case 'delete': {
+        const i = backups.findIndex(x => x.name === a1);
+        if (i < 0) return JSON.stringify({ ok: false, msg: 'missing' });
+        backups.splice(i, 1);
+        return JSON.stringify({ ok: true, folder: a1 });
+      }
       default: return '';
     }
   }
@@ -152,7 +158,7 @@
   const modules = {
     root: '/data/adb/modules',
     modules: [
-      m('fastboot_studio_companion', 'Fastboot Studio Companion (Beta)', 'v2.5.0', { webui: true, action: true }),
+      m('fastboot_studio_companion', 'Fastboot Studio Companion', 'v2.5.1', { webui: true, action: true }),
       m('systemless_hosts', 'Systemless Hosts', 'v1.2', { files: 1 }),
       m('adblock_plus', 'AdBlock Plus', 'v4.0', { files: 1, props: 2, scripts: ['service.sh'] }),
       m('google_sans_font', 'Google Sans Font', 'v3.1', { files: 46 }),

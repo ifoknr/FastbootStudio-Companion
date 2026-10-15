@@ -590,7 +590,8 @@ async function loadBackups() {
       return;
     }
     list.innerHTML = b.items.map(x => `<div class="bitem" data-name="${esc(x.name)}"><span class="p">${esc(x.name)}/</span>` +
-      `<button class="btn-s"${x.sums ? '' : ' disabled'}>${esc(T('backup.verify'))}</button>` +
+      `<button class="btn-s" data-act="verify"${x.sums ? '' : ' disabled'}>${esc(T('backup.verify'))}</button>` +
+      `<button class="btn-s danger" data-act="delete">${esc(T('backup.delete'))}</button>` +
       `<span class="m">${esc(T('backup.files', x.files, x.kb == null ? '–' : size(x.kb * 1024)))}</span></div>`).join('');
   } catch (e) {
     list.innerHTML = `<p class="note">${esc(T('err.generic', e.message || e))}</p>`;
@@ -601,6 +602,7 @@ $('#backupList').addEventListener('click', async e => {
   const btn = e.target.closest('button');
   if (!btn || btn.disabled) return;
   const item = btn.closest('.bitem');
+  if (btn.dataset.act === 'delete') return askDelete(item.dataset.name);
   const meta = item.querySelector('.m');
   btn.disabled = true;
   btn.textContent = T('backup.verifying');
@@ -621,6 +623,20 @@ $('#backupList').addEventListener('click', async e => {
     ? `<span style="color:var(--danger)">✗ ${esc(T('backup.bad', result.bad))}: ${esc(bad.join(', '))}</span>`
     : `<span style="color:var(--ok)">✓ ${esc(T('backup.ok', result.ok))}</span>`;
 });
+
+function askDelete(name) {
+  sheet(T('backup.deleteTitle'), `<p class="note">${esc(T('backup.deleteBody', name))}</p>`,
+    [{ label: T('cancel') }, { label: T('backup.delete'), kind: 'danger', onClick: async () => {
+      closeSheet();
+      try {
+        const r = await fbsJson('delete', name);
+        toast(r.ok ? T('backup.deleted') : T('err.generic', r.msg));
+      } catch (e) {
+        toast(T('err.generic', e.message || e));
+      }
+      loadBackups();
+    } }]);
+}
 
 /* ---------------------------------------------------------------- modules */
 
