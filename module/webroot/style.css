@@ -286,3 +286,14 @@ pre.code .hit { color: var(--danger); }
 }
 
 @media (prefers-reduced-motion: reduce) { .core .bar, .meter i, body { transition: none; } }
+
+/* IFOKNR in the Swamp Ninja lettering, as outlines; one picture per theme. */
+.sig-row { margin: 2px 0 10px; }
+.sig { height: 18px; width: auto; display: block; }
+.sig-light { display: none; }
+:root[data-theme="light"] .sig-dark { display: none; }
+:root[data-theme="light"] .sig-light { display: block; }
+@media (prefers-color-scheme: light) {
+  :root:not([data-theme="dark"]) .sig-dark { display: none; }
+  :root:not([data-theme="dark"]) .sig-light { display: block; }
+}
