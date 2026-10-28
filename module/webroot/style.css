@@ -318,7 +318,16 @@ input[type="radio"]:checked::after { transform: scale(1); }
 .cookie > svg { position: absolute; inset: 0; width: 100%; height: 100%; fill: var(--c3); }
 .cookie img { position: relative; width: 2.9rem; height: 2.9rem; border-radius: .85rem; }
 .hero-top .name { font-size: 1.35rem; line-height: 1; display: flex; flex-direction: column; gap: .45rem; min-width: 0; }
-.hero-top .name small { font-size: .74rem; opacity: .8; }
+.hero-top .name small { display: block; opacity: .85; }
+/* Fastboot Studio in the Prixma lettering, as outlines; one picture per theme, like IFOKNR below. */
+.fbs { height: .62rem; width: auto; display: block; margin-top: .1rem; }
+.fbs-light { display: none; }
+:root[data-theme="light"] .fbs-dark { display: none; }
+:root[data-theme="light"] .fbs-light { display: block; }
+@media (prefers-color-scheme: light) {
+  :root:not([data-theme="dark"]) .fbs-dark { display: none; }
+  :root:not([data-theme="dark"]) .fbs-light { display: block; }
+}
 
 /* Theme as option cards. */
 .ocards { display: grid; grid-template-columns: repeat(3, 1fr); gap: .4rem; }
