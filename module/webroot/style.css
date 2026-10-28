@@ -311,16 +311,11 @@ input[type="radio"]:checked::after { transform: scale(1); }
 .note.warn { color: var(--warn); }
 .note:empty { display: none; }
 
-/* About: the icon on a scalloped cookie, the name in the Prixma lettering, then IFOKNR. */
-.card.hero { background: var(--pc); color: var(--on-pc); }
-.card.hero .kv dt { color: color-mix(in srgb, var(--on-pc) 70%, transparent); }
-.card.hero .lbtn { background: color-mix(in srgb, var(--bg) 26%, transparent); }
-:root[data-dark="0"] .card.hero .lbtn { background: rgba(255, 255, 255, .5); }
-.card.hero .lbtn small { color: color-mix(in srgb, var(--on-pc) 70%, transparent); }
-.card.hero .lbtn svg { background: var(--on-pc); stroke: var(--pc); }
+/* About: the grey icon on a scalloped cookie, the name in the Prixma lettering, then IFOKNR. */
+.card.hero .lbtn { background: var(--c2); }
 .hero-top { display: flex; align-items: center; gap: .9rem; margin: .1rem 0 .8rem; }
 .cookie { position: relative; width: 4.4rem; height: 4.4rem; flex: none; display: grid; place-items: center; }
-.cookie > svg { position: absolute; inset: 0; width: 100%; height: 100%; fill: color-mix(in srgb, var(--on-pc) 22%, transparent); }
+.cookie > svg { position: absolute; inset: 0; width: 100%; height: 100%; fill: var(--c3); }
 .cookie img { position: relative; width: 2.9rem; height: 2.9rem; border-radius: .85rem; }
 .hero-top .name { font-size: 1.35rem; line-height: 1; display: flex; flex-direction: column; gap: .45rem; min-width: 0; }
 .hero-top .name small { font-size: .74rem; opacity: .8; }
