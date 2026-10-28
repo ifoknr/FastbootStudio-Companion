@@ -166,13 +166,11 @@ main { padding: .4rem 1rem calc(var(--bottom) + 6.2rem); max-width: 1500px; marg
 .btn-s[aria-pressed="true"] { color: var(--on-warn-soft); background: var(--warn-soft); }
 .btn-s.danger { color: var(--on-danger-soft); background: var(--danger-soft); }
 .btn-s:disabled { opacity: .45; cursor: not-allowed; }
-/* A connected button group: the chosen one is filled. */
-.seg { display: grid; grid-template-columns: 1fr 1fr; gap: 3px; }
+/* A segmented switch: one pill track, the chosen side is a filled pill inside it. */
+.seg { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; padding: 4px; background: var(--c2); border-radius: 999px; }
 .seg.three { grid-template-columns: 1fr 1fr 1fr; }
-.seg button { background: var(--c2); border: 0; border-radius: 8px; height: 2.6rem; padding: 0 .5rem; font-size: .84rem; font-weight: 500; cursor: pointer; color: var(--text); transition: border-radius .2s, background .2s; }
-.seg button:first-child { border-start-start-radius: 999px; border-end-start-radius: 999px; }
-.seg button:last-child { border-start-end-radius: 999px; border-end-end-radius: 999px; }
-.seg button[aria-pressed="true"] { background: var(--primary); color: var(--on-primary); border-radius: 999px; }
+.seg button { background: none; border: 0; border-radius: 999px; height: 2.3rem; padding: 0 .5rem; font-size: .84rem; font-weight: 500; cursor: pointer; color: var(--dim); transition: background .2s, color .2s; }
+.seg button[aria-pressed="true"] { background: var(--primary); color: var(--on-primary); font-weight: 600; }
 
 /* ---------- partitions */
 .superbar { display: flex; gap: 3px; height: .9rem; direction: ltr; }
