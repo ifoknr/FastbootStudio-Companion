@@ -887,6 +887,8 @@ function loadScript(src) {
 
 async function start() {
   const first = location.hash.slice(1);
+  // Edge to edge: the header and the tab bar run under the system bars (insets in style.css).
+  try { if (typeof ksu !== 'undefined' && ksu.enableEdgeToEdge) ksu.enableEdgeToEdge(true); } catch { /* an older manager keeps its bars */ }
   if (typeof ksu === 'undefined') {
     // Only for previews in a browser: the module zip leaves demo.js out, so a WebUI host
     // without the bridge gets the error card below rather than made-up data.

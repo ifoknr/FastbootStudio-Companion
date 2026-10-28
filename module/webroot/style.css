@@ -16,8 +16,8 @@
   --scrim: rgba(10, 10, 12, .62); --shadow: rgba(0, 0, 0, .5);
   --ui: "Roboto", "Noto Kufi Arabic", "Noto Sans Arabic", system-ui, sans-serif;
   --mono: "Roboto Mono", "Droid Sans Mono", ui-monospace, monospace;
-  --top: env(safe-area-inset-top, 0px);
-  --bottom: env(safe-area-inset-bottom, 0px);
+  --top: var(--window-inset-top, env(safe-area-inset-top, 0px));
+  --bottom: var(--window-inset-bottom, env(safe-area-inset-bottom, 0px));
   --rail-w: 6rem;
   --r-card: 26px;
   color-scheme: dark;
