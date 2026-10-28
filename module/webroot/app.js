@@ -81,7 +81,7 @@ function size(bytes) {
   return iso(Math.max(1, Math.round(bytes / 1024)) + ' KiB');
 }
 const sectors = s => (s == null ? null : s * 512);
-const celsius = (v, scale) => (v == null ? '–' : (v / scale).toFixed(1) + '°C');
+const celsius = (v, scale) => (v == null ? '–' : iso((v / scale).toFixed(1) + '°C'));
 
 let toastTimer;
 function toast(msg) {
@@ -135,7 +135,7 @@ function show(view) {
   $$('.nav button').forEach(b => b.setAttribute('aria-selected', String(b.dataset.v === view)));
   $$('.view').forEach(v => { v.hidden = v.id !== 'v-' + view; });
   if (view === 'log') Log.kick();
-  if (view === 'device') Cpu.kick();
+  if (view === 'device') { Cpu.kick(); shrinkStats(); }
   if (view === 'mods' && !Mods.data) loadMods();
   window.scrollTo(0, 0);
 }
@@ -201,11 +201,28 @@ function renderDevice() {
   // Memory is live in the CPU card below.
   $('#stats').innerHTML = stats.join('');
   $('#stats').style.gridTemplateColumns = stats.length === 1 ? '1fr' : '';
+  shrinkStats();
 }
 
+// A slim strip: label, note and value on one line, a thin meter along the bottom.
 function stat(label, value, note, pct, cls) {
-  return `<div class="stat ${cls}"><span class="l">${esc(label)}</span><span class="v">${esc(value)}</span>` +
-    `<span class="n">${esc(note)}</span><div class="meter"><i style="width:${Math.max(0, Math.min(100, pct)).toFixed(0)}%"></i></div></div>`;
+  return `<div class="stat ${cls}"><span class="l">${esc(label)}</span><span class="n">${esc(note)}</span>` +
+    `<span class="v">${esc(value)}</span><div class="meter"><i style="width:${Math.max(0, Math.min(100, pct)).toFixed(0)}%"></i></div></div>`;
+}
+
+// Text in a strip is never cut: a strip too narrow for its line gets smaller text instead.
+function shrinkStats() {
+  $$('#stats .stat').forEach(el => {
+    let s = 1;
+    el.style.fontSize = '';
+    el.classList.remove('wrap');
+    while (el.scrollWidth > el.clientWidth && s > .8) {
+      s -= .05;
+      el.style.fontSize = s.toFixed(2) + 'rem';
+    }
+    // Still too long: the note moves under the label and value.
+    if (el.scrollWidth > el.clientWidth) el.classList.add('wrap');
+  });
 }
 
 /* The black box: the previous boot's kernel log from pstore. */
@@ -301,7 +318,7 @@ $$('#partF .fbtn').forEach(b => b.addEventListener('click', () => {
   renderParts();
 }));
 
-const SUPER_COLORS = ['#3DD6C4', '#7FA7F5', '#B39CF0', '#F0B341', '#F2615C', '#5BD97A', '#E58FD0', '#9AA6B6'];
+const SUPER_COLORS = ['#A8C4FF', '#DCBCE0', '#94D6A0', '#F2C46D', '#BEC6E0', '#FFB4AB', '#C9B7F2', '#8F8F95'];
 
 function renderSuper(s) {
   let total = 0, list = [];
@@ -848,7 +865,7 @@ function fit() {
   const chrome = $('.appbar').offsetHeight + (bottomBar ? nav.offsetHeight : 0);
   document.documentElement.style.setProperty('--chrome', chrome + 'px');
 }
-addEventListener('resize', fit);
+addEventListener('resize', () => { fit(); shrinkStats(); });
 
 /* ---------------------------------------------------------------- start */
 
