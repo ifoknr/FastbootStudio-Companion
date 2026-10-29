@@ -298,3 +298,47 @@ pre.code .hit { color: var(--danger); }
   :root:not([data-theme="dark"]) .sig-dark { display: none; }
   :root:not([data-theme="dark"]) .sig-light { display: block; }
 }
+
+/* ---------- Material 3 Expressive: muted grey surfaces, tonal blue / slate fills, big rounded
+   shapes, pill buttons. The same palette as Fastboot Studio's new design. */
+:root, :root[data-theme="dark"] {
+  --bg: #2a2a2c; --rail: #2a2a2c; --surface: #353537; --raised: #3d3d40; --hover: #47474b; --line: #4a4a4f;
+  --text: #e5e3e8; --dim: #c4c4cb; --faint: #8f8f95;
+  --accent: #a8c4ff; --accent-ink: #152c5e; --accent-soft: #2e4d9d; --accent-line: #4a68b8;
+  --warn: #e9c77a; --warn-soft: #46402c; --warn-line: #6d5f34;
+  --danger: #ffb4ab; --danger-soft: #6e2a27; --danger-line: #8c3a3a;
+  --ok: #9bd7a8; --info: #a8c4ff; --info-soft: #3f455a; --info-line: #5a6488;
+  --sel: #414a6b; --on-sel: #dde1f9; --alert-bg: #4a2c2b;
+}
+@media (prefers-color-scheme: light) {
+  :root:not([data-theme="dark"]) {
+    --bg: #faf9fd; --rail: #faf9fd; --surface: #efedf1; --raised: #e6e4ea; --hover: #dcdae0; --line: #c6c5cd;
+    --text: #1b1b1f; --dim: #46464f; --faint: #77767e;
+    --accent: #2e4d9d; --accent-ink: #ffffff; --accent-soft: #dae2ff; --accent-line: #a8c4ff;
+    --warn: #7a5900; --warn-soft: #ffefc8; --warn-line: #e9c77a;
+    --danger: #ba1a1a; --danger-soft: #ffdad6; --danger-line: #f0aba4;
+    --ok: #1f7a3a; --info: #2e4d9d; --info-soft: #dde1f9; --info-line: #a8b4dc;
+    --sel: #d6dcf5; --on-sel: #1b2550; --alert-bg: #ffe5e1;
+  }
+}
+:root[data-theme="light"] {
+  --bg: #faf9fd; --rail: #faf9fd; --surface: #efedf1; --raised: #e6e4ea; --hover: #dcdae0; --line: #c6c5cd;
+  --text: #1b1b1f; --dim: #46464f; --faint: #77767e;
+  --accent: #2e4d9d; --accent-ink: #ffffff; --accent-soft: #dae2ff; --accent-line: #a8c4ff;
+  --warn: #7a5900; --warn-soft: #ffefc8; --warn-line: #e9c77a;
+  --danger: #ba1a1a; --danger-soft: #ffdad6; --danger-line: #f0aba4;
+  --ok: #1f7a3a; --info: #2e4d9d; --info-soft: #dde1f9; --info-line: #a8b4dc;
+  --sel: #d6dcf5; --on-sel: #1b2550; --alert-bg: #ffe5e1;
+}
+.appbar { border-bottom: none; }
+.card { border: none !important; border-radius: 24px; }
+.card.alert { background: var(--alert-bg); }
+.chip { border-radius: 8px; }
+.nav { background: var(--rail); border-top: none; }
+.nav button[aria-selected="true"] { color: var(--text); font-weight: 700; }
+.nav button[aria-selected="true"] .ico { background: var(--sel); color: var(--on-sel); border-radius: 999px; }
+.btn { border-radius: 999px !important; }
+.btn-s, .fbtn, .seg button, .search { border-radius: 999px; }
+.fbtn[aria-pressed="true"], .btn-s[aria-pressed="true"], .seg button[aria-pressed="true"] { background: var(--sel); color: var(--on-sel); border-color: var(--accent); }
+.stat { border: none; border-radius: 16px; background: var(--raised); }
+.iconbtn { border-radius: 999px; background: var(--raised); border: none; }
