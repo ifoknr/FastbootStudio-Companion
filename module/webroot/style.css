@@ -54,7 +54,7 @@ button, input { font: inherit; color: inherit; }
 /* ---------- header and navigation */
 .appbar {
   position: sticky; top: 0; z-index: 3; display: flex; align-items: center; justify-content: space-between; gap: .5rem;
-  padding: calc(var(--top) + .8rem) 1rem .8rem; background: var(--bg); border-bottom: 1px solid var(--line);
+  padding: calc(var(--top) + .45rem) 1rem .6rem; background: var(--bg); border-bottom: 1px solid var(--line);
 }
 /* The app icon, the same as on ifoknr.com and the other Fastboot Studio tools. */
 .brand { display: flex; align-items: center; gap: .7rem; min-width: 0; }
@@ -75,7 +75,7 @@ main { padding: 1rem 1rem calc(var(--bottom) + 6rem); max-width: 1500px; margin:
 
 .nav {
   position: fixed; inset-inline: 0; bottom: 0; z-index: 3; display: grid; grid-template-columns: repeat(6, 1fr);
-  background: var(--rail); border-top: 1px solid var(--line); padding: .4rem .25rem calc(var(--bottom) + .5rem);
+  background: var(--rail); border-top: 1px solid var(--line); padding: .35rem .25rem calc(var(--bottom) + .2rem);
 }
 .nav button { background: none; border: 0; padding: .3rem .1rem; display: flex; flex-direction: column; align-items: center; gap: .15rem; font-size: .75rem; color: var(--faint); cursor: pointer; }
 .nav svg { width: 1.35rem; height: 1.35rem; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
@@ -304,7 +304,7 @@ pre.code .hit { color: var(--danger); }
 :root, :root[data-theme="dark"] {
   --bg: #2a2a2c; --rail: #2a2a2c; --surface: #353537; --raised: #3d3d40; --hover: #47474b; --line: #4a4a4f;
   --text: #e5e3e8; --dim: #c4c4cb; --faint: #8f8f95;
-  --accent: #a8c4ff; --accent-ink: #152c5e; --accent-soft: #2e4d9d; --accent-line: #4a68b8;
+  --accent: #a8c4ff; --accent-ink: #152c5e; --accent-soft: #343b50; --accent-line: #4e5878;
   --warn: #e9c77a; --warn-soft: #46402c; --warn-line: #6d5f34;
   --danger: #ffb4ab; --danger-soft: #6e2a27; --danger-line: #8c3a3a;
   --ok: #9bd7a8; --info: #a8c4ff; --info-soft: #3f455a; --info-line: #5a6488;
