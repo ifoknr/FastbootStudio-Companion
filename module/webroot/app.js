@@ -160,9 +160,10 @@ function renderDevice() {
   const avb = $('#avbChip');
   avb.textContent = vb ? 'AVB ' + vb : 'AVB ?';
   avb.className = 'chip ' + (vb === 'green' ? '' : vb === 'orange' ? 'warn' : vb ? 'danger' : 'mute');
-  const unlocked = i.boot.device_state ? i.boot.device_state === 'unlocked' : i.boot.locked === false;
+  // Not known stays "?": showing "locked" would be a guess.
+  const unlocked = i.boot.device_state ? i.boot.device_state === 'unlocked' : typeof i.boot.locked === 'boolean' ? !i.boot.locked : null;
   kv($('#bootKv'), [
-    [T('boot.bootloader'), unlocked ? T('boot.unlocked') : T('boot.locked')],
+    [T('boot.bootloader'), unlocked === null ? '?' : unlocked ? T('boot.unlocked') : T('boot.locked')],
     ['SELinux', i.selinux],
     [T('boot.slot'), i.slot || T('boot.none')],
     [T('boot.layout'), [i.slot ? 'A/B' : 'A-only', i.dynamic ? 'dynamic' : 'static'].join(' · ')],
