@@ -56,8 +56,12 @@ button, input { font: inherit; color: inherit; }
   position: sticky; top: 0; z-index: 3; display: flex; align-items: center; justify-content: space-between; gap: .5rem;
   padding: calc(var(--top) + .8rem) 1rem .8rem; background: var(--bg); border-bottom: 1px solid var(--line);
 }
+/* The app icon, the same as on ifoknr.com and the other Fastboot Studio tools. */
+.brand { display: flex; align-items: center; gap: .7rem; min-width: 0; }
+.brand .logo { width: 2.5rem; height: 2.5rem; flex: none; display: block; }
 .appbar .title { font-weight: 700; font-size: 1.15rem; line-height: 1.25; display: flex; align-items: center; gap: .5rem; }
 .appbar .title .chip { font-size: .7rem; padding: .05rem .45rem; }
+.wm { display: block; height: 1em; overflow: visible; }
 .appbar .sub { font-size: .8rem; color: var(--faint); direction: ltr; unicode-bidi: isolate; }
 [dir="rtl"] .appbar .sub { text-align: right; }
 .bar-end { display: flex; align-items: center; gap: .5rem; }
@@ -283,3 +287,14 @@ pre.code .hit { color: var(--danger); }
 }
 
 @media (prefers-reduced-motion: reduce) { .core .bar, .meter i, body { transition: none; } }
+
+/* IFOKNR in the Swamp Ninja lettering, as outlines; one picture per theme. */
+.sig-row { margin: 2px 0 10px; }
+.sig { height: 18px; width: auto; display: block; }
+.sig-light { display: none; }
+:root[data-theme="light"] .sig-dark { display: none; }
+:root[data-theme="light"] .sig-light { display: block; }
+@media (prefers-color-scheme: light) {
+  :root:not([data-theme="dark"]) .sig-dark { display: none; }
+  :root:not([data-theme="dark"]) .sig-light { display: block; }
+}
