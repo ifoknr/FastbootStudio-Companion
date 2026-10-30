@@ -17,7 +17,7 @@ const STRINGS = {
 
     'boot.title': 'Boot and security', 'boot.bootloader': 'Bootloader', 'boot.locked': 'locked', 'boot.unlocked': 'unlocked',
     'boot.slot': 'Active slot', 'boot.layout': 'Layout', 'boot.treble': 'Treble / GSI', 'boot.none': 'none',
-    'boot.spoofed': 'A hiding module changed ro.boot.verifiedbootstate. The state shown here is the one the bootloader reported.',
+    'boot.spoofed': 'The ROM or a hiding module changed the boot properties (ro.boot.*) to look locked. The state shown here is the real one: from the bootloader, and root only works when it is unlocked.',
     'kernel.title': 'Kernel', 'kernel.version': 'Version', 'kernel.nokmi': 'not GKI', 'kernel.patch': 'Security patch',
     'kernel.android': 'Android', 'kernel.build': 'Build',
 
@@ -92,7 +92,7 @@ const STRINGS = {
 
     'boot.title': 'الإقلاع والحماية', 'boot.bootloader': 'البوت لودر', 'boot.locked': 'مقفول', 'boot.unlocked': 'مفتوح',
     'boot.slot': 'السلوت الحالي', 'boot.layout': 'التقسيم', 'boot.treble': 'Treble / GSI', 'boot.none': 'ما فيه',
-    'boot.spoofed': 'فيه مود إخفاء غيّر ro.boot.verifiedbootstate. الحالة المعروضة هنا هي اللي أرسلها البوت لودر نفسه.',
+    'boot.spoofed': 'الروم أو مود إخفاء غيّر خصائص الإقلاع (ro.boot.*) عشان يبان الجوال مقفل. الحالة المعروضة هنا هي الحقيقية: من البوت لودر نفسه، والروت ما يشتغل إلا والبوت لودر مفتوح.',
     'kernel.title': 'الكيرنل', 'kernel.version': 'النسخة', 'kernel.nokmi': 'مو GKI', 'kernel.patch': 'الباتش الأمني',
     'kernel.android': 'أندرويد', 'kernel.build': 'البيلد',
 

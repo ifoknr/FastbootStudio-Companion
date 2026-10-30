@@ -63,6 +63,48 @@ storage_json() {
     printf null
 }
 
+# Locked or unlocked, in I_DEVSTATE and I_LOCKED. Older bootloaders (Qualcomm msm89xx and the
+# like) give no vbmeta.device_state, and ROMs and hiding modules set ro.boot.* to "locked"
+# for Play Integrity, so the properties come last: first the kernel command line or
+# bootconfig, then what the bootloader's AVB state means (orange is unlocked). Root needs a
+# modified boot image, which a locked bootloader does not start, so with root it is unlocked.
+boot_state() {
+    I_DEVSTATE=$(bootarg vbmeta.device_state)
+    if [ -z "$I_DEVSTATE" ]; then
+        case $(bootarg flash.locked) in
+            0) I_DEVSTATE=unlocked ;;
+            1) I_DEVSTATE=locked ;;
+        esac
+    fi
+    if [ -z "$I_DEVSTATE" ]; then
+        case $(bootarg verifiedbootstate) in
+            orange) I_DEVSTATE=unlocked ;;
+            green | yellow) I_DEVSTATE=locked ;;
+        esac
+    fi
+    _pstate=$(prop ro.boot.vbmeta.device_state)
+    if [ -z "$_pstate" ]; then
+        case $(prop ro.boot.flash.locked) in
+            0) _pstate=unlocked ;;
+            1) _pstate=locked ;;
+        esac
+    fi
+    [ -n "$I_DEVSTATE" ] || I_DEVSTATE=$_pstate
+    if [ "$I_ROOT" != unknown ] && [ "$I_DEVSTATE" != unlocked ]; then
+        I_DEVSTATE=unlocked
+        # Root on a phone the bootloader or the properties call locked: they were changed.
+        [ "$I_VBSTATE" != green ] || I_VBSTATE=orange
+    fi
+    if [ "$I_DEVSTATE" = unlocked ] && [ "$_pstate" = locked ]; then
+        I_VB_SPOOFED=true
+    fi
+    case $I_DEVSTATE in
+        unlocked) I_LOCKED=0 ;;
+        locked) I_LOCKED=1 ;;
+        *) I_LOCKED=$(prop ro.boot.flash.locked) ;;
+    esac
+}
+
 collect() {
     I_MODEL=$(prop ro.product.model)
     I_BRAND=$(prop ro.product.brand)
@@ -90,15 +132,13 @@ collect() {
     elif [ -n "$_p" ] && [ "$_p" != "$I_VBSTATE" ]; then
         I_VB_SPOOFED=true
     fi
-    I_DEVSTATE=$(bootarg vbmeta.device_state)
-    [ -n "$I_DEVSTATE" ] || I_DEVSTATE=$(prop ro.boot.vbmeta.device_state)
-    I_LOCKED=$(prop ro.boot.flash.locked)
+    I_ROOT=$(root_manager)
+    boot_state
 
     rd "$R/proc/sys/kernel/osrelease"; I_KERNEL=$REPLY
     I_KMI=$(kmi_of "$I_KERNEL")
     rd "$R/sys/fs/selinux/enforce"
     case $REPLY in 1) I_SELINUX=Enforcing ;; 0) I_SELINUX=Permissive ;; *) I_SELINUX=$(getenforce 2>/dev/null) ;; esac
-    I_ROOT=$(root_manager)
     I_REASON=$(prop sys.boot.reason)
     [ -n "$I_REASON" ] || I_REASON=$(prop ro.boot.bootreason)
 

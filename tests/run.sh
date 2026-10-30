@@ -273,6 +273,28 @@ for SHN in $SHELLS; do
     expect "device.json still JSON after masking" sh -c 'jq -e .model "$1"/*/device.json' _ "$WORK/x"
     rm -rf "$WORK/x"
 
+    # ---- older bootloaders: only verifiedbootstate on the command line, properties set to locked
+    mv "$R/proc/bootconfig" "$R/bootconfig.keep"
+    cp "$R/proc/cmdline" "$R/cmdline.keep"
+    printf 'console=ttyMSM0 androidboot.hardware=qcom androidboot.verifiedbootstate=orange\n' > "$R/proc/cmdline"
+    cp "$R/props" "$R/props.keep"
+    sed -i 's/^ro.boot.flash.locked=.*/ro.boot.flash.locked=1/' "$R/props"
+    out=$(fbs info)
+    expect "orange on the command line means unlocked" jqt "$out" '.boot.device_state == "unlocked" and .boot.locked == false'
+    expect "properties that say locked count as changed" jqt "$out" '.boot.spoofed == true'
+    # no word from the bootloader at all: root still means unlocked
+    printf 'console=ttyMSM0\n' > "$R/proc/cmdline"
+    out=$(fbs info)
+    expect "root means unlocked whatever the properties say" jqt "$out" '.boot.device_state == "unlocked" and .boot.locked == false and .boot.vbstate == "orange"'
+    # no root, no word from the bootloader: the properties are all there is
+    mv "$R/data/adb/ksud" "$R/ksud.keep"
+    out=$(fbs info)
+    expect "without root or bootloader words, the properties decide" jqt "$out" '.boot.device_state == "locked" and .boot.locked == true and .boot.spoofed == false'
+    mv "$R/ksud.keep" "$R/data/adb/ksud"
+    mv "$R/bootconfig.keep" "$R/proc/bootconfig"
+    mv "$R/cmdline.keep" "$R/proc/cmdline"
+    mv "$R/props.keep" "$R/props"
+
     # ---- the Action button runs from the module folder
     out=$(FBS_ROOT=$R FBS_RUN=$WORK/run PATH="$HERE/shims:$PATH" $SH "$ROOT/module/action.sh")
     expect "action prints the report" sh -c 'printf "%s\n" "$1" | head -n 1 | grep -q "^Fastboot Studio Companion "' _ "$out"
