@@ -344,10 +344,10 @@ pre.code .hit { color: var(--danger); }
 .iconbtn { border-radius: 999px; background: var(--raised); border: none; }
 
 /* The icon: grey glass in dark, frosted glass in light (the same rule as the signature). */
-.logo-light { display: none; }
-:root[data-theme="light"] .logo-dark { display: none; }
-:root[data-theme="light"] .logo-light { display: block; }
+.brand .logo-light { display: none; }
+:root[data-theme="light"] .brand .logo-dark { display: none; }
+:root[data-theme="light"] .brand .logo-light { display: block; }
 @media (prefers-color-scheme: light) {
-  :root:not([data-theme="dark"]) .logo-dark { display: none; }
-  :root:not([data-theme="dark"]) .logo-light { display: block; }
+  :root:not([data-theme="dark"]) .brand .logo-dark { display: none; }
+  :root:not([data-theme="dark"]) .brand .logo-light { display: block; }
 }
