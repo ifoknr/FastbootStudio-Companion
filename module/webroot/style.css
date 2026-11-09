@@ -342,3 +342,12 @@ pre.code .hit { color: var(--danger); }
 .fbtn[aria-pressed="true"], .btn-s[aria-pressed="true"], .seg button[aria-pressed="true"] { background: var(--sel); color: var(--on-sel); border-color: var(--accent); }
 .stat { border: none; border-radius: 16px; background: var(--raised); }
 .iconbtn { border-radius: 999px; background: var(--raised); border: none; }
+
+/* The icon: grey glass in dark, frosted glass in light (the same rule as the signature). */
+.logo-light { display: none; }
+:root[data-theme="light"] .logo-dark { display: none; }
+:root[data-theme="light"] .logo-light { display: block; }
+@media (prefers-color-scheme: light) {
+  :root:not([data-theme="dark"]) .logo-dark { display: none; }
+  :root:not([data-theme="dark"]) .logo-light { display: block; }
+}
