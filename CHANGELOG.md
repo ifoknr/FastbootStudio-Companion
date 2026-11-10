@@ -2,6 +2,14 @@
 
 <!-- The "## vX.Y.Z" section is the release notes and the Telegram post (.github/scripts/telegram-release.sh): keep it short. -->
 
+## v2.5.3
+- أيقونة زجاجية جديدة: شريحة وقطعة بازل، رمادي زجاجي بالليلي وأبيض مثلّج بالنهاري
+- الشعار بالواجهة يتبدّل مع الوضع الليلي والنهاري
+
+**English**
+- A new glass icon: a chip and a puzzle piece, grey glass in dark, frosted white in light
+- The logo in the WebUI follows the dark and light theme
+
 ## v2.5.2
 - البوت لودر يطلع «مفتوح» صح حتى لو الروم أو مود إخفاء خلّى خصائص الإقلاع تقول «مقفل» (مثل أجهزة كوالكوم القديمة)
 - الحالة تنقرا من البوت لودر نفسه أول، والروت يعني إن البوت لودر مفتوح
