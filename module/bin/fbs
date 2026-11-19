@@ -9,7 +9,11 @@ FBS_VERSION=2.5.3
 # beta while the module is experimental; stable once it is not. release.yml publishes a beta
 # as a pre-release, the WebUI shows a Beta badge, and tools/build.sh checks module.prop agrees.
 FBS_CHANNEL=stable
-FBS_LIB=${FBS_LIB:-${0%/*}/../lib}
+# Started as "sh fbs" from its own folder, $0 has no folder in it.
+case $0 in
+    */*) FBS_LIB=${FBS_LIB:-${0%/*}/../lib} ;;
+    *) FBS_LIB=${FBS_LIB:-../lib} ;;
+esac
 
 # shellcheck source=SCRIPTDIR/../lib/common.sh
 . "$FBS_LIB/common.sh" || exit 1

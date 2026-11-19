@@ -412,6 +412,9 @@ for SHN in $SHELLS; do
     # ---- cli
     expect "version" test "$(fbs version)" = "$(sed -n 's/^version=v//p' "$ROOT/module/module.prop")"
     expect "unknown command fails" refuses fbs frobnicate
+    expect "runs from its own folder" test "$(cd "$ROOT/module/bin" && $SH fbs version)" = "$(fbs version)"
+    out=$(fbs last lots 2>&1)
+    expect "last: a count that is not a number falls back" sh -c 'printf "%s\n" "$1" | grep -q "Restarting system" && ! printf "%s\n" "$1" | grep -qi "tail"' _ "$out"
 done
 
 echo "$((total - fails)) / $total passed"

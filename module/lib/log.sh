@@ -41,6 +41,8 @@ last_text() {
     [ -n "$_reason" ] || _reason=$(prop ro.boot.bootreason)
     echo "#reason=$_reason"
     echo "#source=${_src#"$R"}"
-    [ -n "$_src" ] && tail -n "${1:-150}" "$_src"
+    _n=${1:-150}
+    case $_n in '' | *[!0-9]*) _n=150 ;; esac
+    [ -n "$_src" ] && tail -n "$_n" "$_src"
     return 0
 }
