@@ -33,7 +33,8 @@ modules_json() {
         _name=
         _ver=
         _author=
-        while IFS='=' read -r _k _v; do
+        # "|| [ -n ... ]": a last line without a newline still counts.
+        while IFS='=' read -r _k _v || [ -n "$_k" ]; do
             case $_k in
                 name) _name=$_v ;;
                 version) _ver=$_v ;;
@@ -51,13 +52,17 @@ modules_json() {
         [ $_removing = true ] && _live=false
 
         _nfiles=0
+        # KernelSU and APatch move system/vendor (product, ...) to the module's top level and
+        # leave a link system/vendor -> ../vendor behind. The link is not a file the module
+        # puts in place, so it is dropped: every such module has one.
         if [ $_live = true ] && [ $_mount = true ]; then
             (
                 cd "$_m" || exit 0
                 for _p in $MOD_DIRS; do
                     [ -d "$_p" ] && find "$_p" \( -type f -o -type l \) 2>/dev/null
                 done
-            ) | sed -E 's#^(vendor|product|system_ext|odm)/#system/\1/#' > "$_w/one"
+            ) | sed -E -e 's#^(vendor|product|system_ext|odm)/#system/\1/#' \
+                -e '/^(system\/)?(vendor|product|system_ext|odm)$/d' > "$_w/one"
             grep '/\.replace$' "$_w/one" | sed -e 's#/\.replace$##' -e "s#^#/#" -e "s#\$#$TAB$_id#" >> "$_w/repl"
             grep -v '/\.replace$' "$_w/one" | sed -e "s#^#/#" -e "s#\$#$TAB$_id#" > "$_w/mine"
             _nfiles=$(wc -l < "$_w/mine")

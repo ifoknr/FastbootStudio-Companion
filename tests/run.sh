@@ -190,6 +190,12 @@ for SHN in $SHELLS; do
     expect "deleted folder is gone" test ! -e "$dir"
     out=$(fbs backups)
     expect "two backups left" jqt "$out" '.items | length == 2'
+    # A backup the user renamed: spaces, and no date after the last underscore.
+    mkdir -p "$WORK/data/Backups/before flash_old phone"
+    out=$(fbs backups)
+    expect "a renamed backup keeps its name" jqt "$out" '.items | length == 3 and ([.[].name] | index("before flash_old phone") != null)'
+    out=$(fbs delete "before flash_old phone")
+    expect "a renamed backup can be deleted" jqt "$out" '.ok == true'
 
     # ---- reboot
     rm -f "$R/reboot.log"
@@ -218,6 +224,9 @@ for SHN in $SHELLS; do
     expect "disabled and unmounted modules are not file conflicts" jqt "$out" \
         '[.conflicts[] | select(.kind == "file") | .modules[]] | (index("off") == null and index("nomount") == null)'
     expect "four conflicts in all" jqt "$out" '.conflicts | length == 4'
+    expect "the system/vendor link KernelSU leaves is not a shared file" jqt "$out" \
+        '([.conflicts[] | select(.kind == "file") | .paths[]] | index("/system/vendor") == null) and ([.modules[] | select(.id == "addon")][0].files == 2)'
+    expect "module.prop without a last newline" jqt "$out" '.modules[] | select(.id == "ui") | .author == "tester"'
     expect "scan files cleaned up" test ! -d "$WORK/run/scan"
     out=$(fbs report)
     expect "report counts conflicts" sh -c 'printf "%s" "$1" | grep -q "^Conflicts  *4 between modules$"' _ "$out"

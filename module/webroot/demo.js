@@ -184,7 +184,8 @@
       setTimeout(() => window[cb](0, answer(args), ''), 60);
     },
     spawn(_cmd, argsJson, _options, cb) {
-      const args = JSON.parse(argsJson).slice(1);
+      // The real bridge joins the arguments with spaces into one shell line.
+      const args = unquote(JSON.parse(argsJson).join(' ')).slice(1);
       const list = events(args);
       let i = 0;
       const step = () => {

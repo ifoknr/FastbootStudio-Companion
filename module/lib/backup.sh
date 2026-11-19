@@ -152,8 +152,11 @@ backups_json() {
     for _f in "$DATA"/Backups/*/; do
         [ -d "$_f" ] || continue
         _f=${_f%/}
-        echo "${_f##*_} ${_f##*/}"
-    done | sort -r | while read -r _ _n; do
+        _f=${_f##*/}
+        # "/" between the two: it is the one character a folder name cannot hold (a renamed
+        # backup may have spaces).
+        echo "${_f##*_}/$_f"
+    done | sort -r | while IFS=/ read -r _ _n; do
         _files=0
         [ -r "$DATA/Backups/$_n/SHA256SUMS" ] && _files=$(wc -l < "$DATA/Backups/$_n/SHA256SUMS")
         _kb=$(du -sk "$DATA/Backups/$_n" 2>/dev/null | { read -r _s _; echo "$_s"; })

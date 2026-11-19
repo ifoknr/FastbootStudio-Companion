@@ -170,6 +170,12 @@ put debloat system/app/Foo/.replace
 printf '# comment=ignored\nro.demo.x=2\n' > "$M/debloat/system.prop"
 mod addon 'Addon'
 put addon system/app/Foo/extra.apk
+# As KernelSU and APatch install them: the vendor files at the top level and a link left in
+# system/. Two modules with that link share no file.
+put addon vendor/etc/addon.conf
+ln -s ../vendor "$M/addon/system/vendor"
+put fonts_1 vendor/etc/fonts_1.conf
+ln -s ../vendor "$M/fonts_1/system/vendor"
 mod off 'Off'
 put off system/etc/hosts
 : > "$M/off/disable"
@@ -181,3 +187,5 @@ mod ui 'With WebUI'
 put ui webroot/index.html
 put ui action.sh
 put ui service.sh
+# No newline after the last line, as many module.prop files are written.
+printf 'id=ui\nname=With WebUI\nversion=v1.0\nversionCode=1\nauthor=tester' > "$M/ui/module.prop"

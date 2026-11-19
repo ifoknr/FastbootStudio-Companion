@@ -51,7 +51,9 @@ const Bridge = (() => {
       child.on('error', e => { delete window[cb]; reject(e); });
       window[cb] = child;
       try {
-        ksu.spawn('sh', JSON.stringify([MOD + '/bin/fbs', ...args]), '{}', cb);
+        // The bridge joins the arguments with spaces into one shell line, so each is quoted
+        // here, as in exec: a backup folder's name can hold a space or shell characters.
+        ksu.spawn('sh', JSON.stringify([MOD + '/bin/fbs', ...args].map(quote)), '{}', cb);
       } catch (e) {
         delete window[cb];
         reject(e);
@@ -243,10 +245,12 @@ async function loadBlackBox() {
 /* Live clocks, temperature and memory, once a second while the Device tab is open. */
 const Cpu = {
   timer: null,
-  kick() { if (!this.timer) this.tick(); },
+  busy: false,
+  kick() { if (!this.timer && !this.busy) this.tick(); },
   async tick() {
     this.timer = null;
     if (S.view !== 'device' || document.hidden) return;
+    this.busy = true;
     try {
       const c = await fbsJson('cpu');
       const cores = $('#cores');
@@ -267,6 +271,7 @@ const Cpu = {
       }
       $('#swapLine').textContent = c.swap_used_kb ? `swap ${size(c.swap_used_kb * 1024)}` : '';
     } catch { /* one missed second is fine */ }
+    this.busy = false;
     this.timer = setTimeout(() => this.tick(), 1000);
   },
 };
@@ -394,15 +399,17 @@ const Log = {
       else args = ['log', 'app', last && last.t ? last.t : '300'];
       const batch = (await fbs(...args)).split('\n').filter(Boolean);
       let start = 0;
+      let gap = false;
       if (last) {
         const i = batch.lastIndexOf(last.text);
         if (i >= 0) start = i + 1;
-        else if (batch.length) arr.push({ gap: true });
+        else if (batch.length) gap = true;
       }
       const fresh = batch.slice(start).map(text => ({
         text, c: classify(src, text), t: src === 'app' && /^\d\d-\d\d \d\d:/.test(text) ? text.slice(0, 18) : null,
       }));
       if (fresh.length && src === this.src) {
+        if (gap) fresh.unshift({ gap: true });
         arr.push(...fresh);
         if (arr.length > this.MAX) arr.splice(0, arr.length - this.MAX);
         this.append(fresh);
@@ -682,7 +689,7 @@ function renderMods() {
     }
     if (c.kind === 'replace') {
       return `<div class="card conflict"><h3>${esc(T('conflict.replace'))}</h3>${chips([c.by, ...c.modules])}` +
-        `<p class="note">${esc(T('conflict.replace.body', name(c.by), c.modules.map(name).join('، ')))}</p><pre class="paths">${esc(c.path)}</pre></div>`;
+        `<p class="note">${esc(T('conflict.replace.body', name(c.by), c.modules.map(name).join(i18n.lang === 'ar' ? '، ' : ', ')))}</p><pre class="paths">${esc(c.path)}</pre></div>`;
     }
     return `<div class="card conflict prop"><h3>${esc(T('conflict.prop'))}</h3><pre class="paths">${esc(c.key)}</pre>` +
       `<div class="pvals">${c.values.map(v => `<b>${esc(name(v.module))}</b><code>${esc(v.value)}</code>`).join('')}</div>` +
@@ -770,7 +777,9 @@ function setLang(choice) {
   if (S.parts) { renderParts(); renderSets(); }
   if (S.super) renderSuper(S.super);
   renderMods();
-  if (!Mods.busy) $('#modsScan').textContent = T('mods.scan');
+  $('#modsScan').textContent = T(Mods.busy ? 'mods.scanning' : 'mods.scan');
+  if (backupRunning) $('#backupGo').textContent = T('backup.running');
+  if ($('#bundleGo').disabled) $('#bundleGo').textContent = T('bundle.making');
   Log.updateRules();
   Log.render();
   loadBackups();
