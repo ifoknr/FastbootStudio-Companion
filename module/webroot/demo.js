@@ -26,7 +26,7 @@
     android: '14', sdk: '34', patch: '2026-08-05', build: 'DEMO-14.0.1', platform: 'mt6789', soc: 'mediatek',
     arch: 'arm64-v8a', slot: '_a', dynamic: true, treble: true, vndk: '34',
     boot: { vbstate: 'orange', device_state: 'unlocked', locked: false, spoofed: true },
-    kernel: '5.15.148-android13-8-00017-gabc123', kmi: '5.15-android13', selinux: 'Enforcing', root: 'KernelSU',
+    kernel: '5.15.148-android13-8-00017-gabc123', kmi: '5.15-android13', selinux: 'Enforcing', root: 'KernelSU', root_also: '',
     boot_reason: 'kernel_panic',
     battery: { level: 78, health: 91, cycles: 312, temp_dc: 334 },
     memory: { total_kb: 7864320, avail_kb: 2725000 },
@@ -105,7 +105,7 @@
     const [cmd, a1, a2] = args;
     switch (cmd) {
       case 'info': return JSON.stringify(info);
-      case 'parts': return JSON.stringify({ dir: '/dev/block/platform/bootdevice/by-name', slot: '_a', parts: parts.map(([name, dev, sectors, cat]) => ({ name, dev, sectors, cat })) });
+      case 'parts': return JSON.stringify({ dir: '/dev/block/platform/bootdevice/by-name', slot: '_a', parts: parts.map(([name, dev, sectors, cat]) => ({ name, dev, sectors, cat, sure: true })) });
       case 'super': return JSON.stringify({ source: 'lpdump', slot: '_a', lp });
       case 'cpu': return JSON.stringify({
         cores: Array.from({ length: 8 }, (_, n) => { const max = n < 6 ? 2000000 : 2200000; return { cur: Math.round((500000 + Math.random() * (max - 500000)) / 100000) * 100000, max }; }),
@@ -118,7 +118,7 @@
         return app.filter(l => l.slice(0, 18) >= a2).join('\n') + '\n';
       }
       case 'last': return last + '\n';
-      case 'backups': return JSON.stringify({ root: '/sdcard/FastbootStudio/Backups', items: backups });
+      case 'backups': return JSON.stringify({ root: '/sdcard/FastbootStudio/Backups', free_kb: 48 * 1048576, items: backups });
       case 'bundle': return JSON.stringify({ ok: true, file: '/sdcard/FastbootStudio/Reports/companion-report_20261009-211407.tar.gz', redacted: a1 !== 'plain' });
       case 'reboot': return JSON.stringify({ ok: true });
       case 'open': return JSON.stringify({ ok: true });
@@ -134,9 +134,12 @@
   }
 
   function events(args) {
+    // Anything else is what a shell would make of arguments that were not quoted: no job.
+    if (args[0] !== 'verify' && !(args[0] === 'backup' && ['critical', 'boot', 'full'].includes(args[1]))) return null;
     if (args[0] === 'verify') {
       const b = backups.find(x => x.name === args[1]);
-      const n = b ? b.files : 0;
+      if (!b) return [{ event: 'error', msg: 'no-sums' }];
+      const n = b.files;
       return [...Array.from({ length: n }, (_, i) => ({ event: 'file', name: `part${i}.img`, state: 'ok' })), { event: 'finish', ok: n, bad: 0 }];
     }
     const set = args[1];
@@ -172,11 +175,24 @@
       { kind: 'file', modules: ['adblock_plus', 'systemless_hosts'], count: 1, paths: ['/system/etc/hosts'] },
       { kind: 'file', modules: ['google_sans_font', 'ios_emoji'], count: 3, paths: ['/system/fonts/NotoColorEmoji.ttf', '/system/fonts/NotoColorEmojiFlags.ttf', '/system/etc/fonts.xml'] },
       { kind: 'replace', path: '/system/app/YouTube', by: 'debloater', modules: ['youtube_vanced'] },
+      { kind: 'remove', path: '/system/etc/hosts', by: 'debloater', modules: ['adblock_plus', 'systemless_hosts'] },
       { kind: 'prop', key: 'debug.hwui.renderer', values: [{ module: 'debloater', value: 'skiagl' }, { module: 'gpu_tweaks', value: 'skiavk' }] },
     ],
   };
 
   const unquote = s => [...s.matchAll(/'((?:[^']|'\\'')*)'/g)].map(m => m[1].split("'\\''").join("'"));
+
+  // For the smoke test: ?demo=backup taps "Start backup" and ?demo=verify the first "Verify",
+  // so the spawn path (quoting, events, the list drawn again) is run, not only the first screen.
+  const auto = new URLSearchParams(location.search).get('demo');
+  if (auto === 'backup' || auto === 'verify') {
+    const tap = () => {
+      const b = document.querySelector('#backupList [data-act="verify"]');
+      if (!b) return setTimeout(tap, 100);
+      (auto === 'verify' ? b : document.querySelector('#backupGo')).click();
+    };
+    setTimeout(tap, 300);
+  }
 
   window.ksu = {
     exec(command, _options, cb) {
@@ -186,7 +202,7 @@
     spawn(_cmd, argsJson, _options, cb) {
       // The real bridge joins the arguments with spaces into one shell line.
       const args = unquote(JSON.parse(argsJson).join(' ')).slice(1);
-      const list = events(args);
+      const list = events(args) || [];
       let i = 0;
       const step = () => {
         const child = window[cb];

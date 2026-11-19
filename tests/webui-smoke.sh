@@ -37,6 +37,18 @@ for lang in en ar; do
         check "page is right-to-left" 'dir="rtl"'
     fi
 done
+# The long jobs go through the bridge's spawn: a backup (checked afterwards, as the default is)
+# and a Verify tap, in both languages.
+for lang in en ar; do
+    dom=$("$CHROME" --headless --no-sandbox --disable-gpu --virtual-time-budget=12000 --dump-dom "file://$PAGE?lang=$lang&demo=backup#backup" 2>/dev/null)
+    check "backup ran through spawn" 'class="st ok"[^>]*>✓'
+    check "backup listed afterwards" 'data-name="Demo_Phone_DEMO0123456789_20261009-211407"'
+    check "backup checked afterwards" 'data-name="Demo_Phone_DEMO0123456789_20261009-211407".*color:var(--ok)">✓'
+    check "free space shown" 'id="backupFree" role="status">[^<]*48'
+    dom=$("$CHROME" --headless --no-sandbox --disable-gpu --virtual-time-budget=6000 --dump-dom "file://$PAGE?lang=$lang&demo=verify#backup" 2>/dev/null)
+    check "verify ran through spawn" 'data-name="Demo_Phone_DEMO0123456789_20260921-184012".*color:var(--ok)">✓'
+    check "no button left busy" 'data-act="verify">'
+done
 dom=$("$CHROME" --headless --no-sandbox --disable-gpu --virtual-time-budget=4000 --dump-dom "file://$PAGE?theme=light" 2>/dev/null)
 lang=light
 check "day mode applies" 'data-theme="light"'

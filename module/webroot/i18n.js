@@ -77,6 +77,20 @@ const STRINGS = {
     'links.app': 'Fastboot Studio for Windows', 'links.group': 'Telegram group', 'links.dm': 'Message me',
     'links.source': 'Module source',
     'demo': 'Demo data. Open this page from your root manager to see your own phone.',
+
+    'boot.root': 'Root', 'boot.rootAlso': 'files of {0} are also there', 'boot.dynamic': 'dynamic', 'boot.static': 'static',
+    'stat.life': 'life {0}', 'cpu.offline': 'offline', 'cat.unsure': 'Not in backups',
+    'facts.copy': 'Copy device details',
+    'conflict.remove': 'File removed', 'conflict.remove.body': '{0} removes this path, so what {1} puts there does not show up.',
+    'backup.free': '{0} free on the phone', 'backup.verifyAfter': 'Check every image after the backup',
+    'err.no-sums': 'This backup has no SHA256SUMS file, so there is nothing to check it against.',
+    'err.empty-sums': 'The SHA256SUMS file of this backup is empty, so nothing was checked.',
+    'err.verify': 'The check did not finish.',
+    'restore.title': 'How to restore',
+    'restore.1': "Copy the backup to your PC: Fastboot Studio's Phone page does it and checks every file. Or copy the folder yourself and run sha256sum -c SHA256SUMS in it.",
+    'restore.2': 'Restart the phone to the bootloader (Tools › Restart to). The bootloader has to be unlocked to flash.',
+    'restore.3': "Flash only the partition you need, from Fastboot Studio's Device page or by hand:",
+    'restore.warn': 'Nothing is restored from this page. Flash a backup only to the phone it came from: the critical partitions (IMEI, calibration) of another phone can leave yours without signal or unable to start.',
   },
   ar: {
     'tab.device': 'الجهاز', 'tab.parts': 'البارتشنات', 'tab.mods': 'المودات',
@@ -152,6 +166,20 @@ const STRINGS = {
     'links.app': 'برنامج Fastboot Studio للويندوز', 'links.group': 'قروب تيليجرام', 'links.dm': 'راسلني على الخاص',
     'links.source': 'كود الوحدة',
     'demo': 'بيانات تجريبية. افتح الصفحة من تطبيق الروت عشان تشوف جوالك.',
+
+    'boot.root': 'الروت', 'boot.rootAlso': 'وملفات {0} باقية', 'boot.dynamic': 'ديناميكي', 'boot.static': 'ثابت',
+    'stat.life': 'العمر {0}', 'cpu.offline': 'متوقف', 'cat.unsure': 'خارج الباك أب',
+    'facts.copy': 'انسخ معلومات الجهاز',
+    'conflict.remove': 'ملف محذوف', 'conflict.remove.body': '{0} يحذف هالمسار، فاللي يحطه {1} هناك ما يبان.',
+    'backup.free': 'الفاضي في الجوال {0}', 'backup.verifyAfter': 'تحقق من كل صورة بعد الباك أب',
+    'err.no-sums': 'هالنسخة ما فيها ملف SHA256SUMS، فما فيه شي نتحقق منه.',
+    'err.empty-sums': 'ملف SHA256SUMS في هالنسخة فاضي، فما انفحص شي.',
+    'err.verify': 'التحقق ما كمل.',
+    'restore.title': 'كيف أسترجع',
+    'restore.1': 'انقل النسخة للكمبيوتر: صفحة «الجوال» في Fastboot Studio تنقلها وتتحقق من كل ملف. أو انسخ المجلد بنفسك وشغّل sha256sum -c SHA256SUMS داخله.',
+    'restore.2': 'أعد تشغيل الجوال على البوت لودر (أدوات › إعادة التشغيل إلى). لازم البوت لودر يكون مفتوح عشان تفلّش.',
+    'restore.3': 'فلّش البارتشن اللي تحتاجه بس، من صفحة الجهاز في Fastboot Studio أو يدوي:',
+    'restore.warn': 'هالصفحة ما تسترجع شي بنفسها. فلّش النسخة على نفس الجوال اللي انأخذت منه بس: البارتشنات المهمة (الـ IMEI والمعايرة) حق جوال ثاني ممكن تخلي جوالك بدون شبكة أو ما يشتغل.',
   },
 };
 
@@ -172,6 +200,9 @@ const i18n = {
     document.documentElement.lang = this.lang;
     document.documentElement.dir = this.lang === 'ar' ? 'rtl' : 'ltr';
     document.querySelectorAll('[data-i]').forEach(el => { el.textContent = this.t(el.dataset.i); });
-    document.querySelectorAll('[data-ph]').forEach(el => { el.placeholder = this.t(el.dataset.ph); });
+    // A placeholder is not a name: the same words go to aria-label, and data-al names a
+    // region that has no visible label (the log box).
+    document.querySelectorAll('[data-ph]').forEach(el => { el.placeholder = this.t(el.dataset.ph); el.setAttribute('aria-label', this.t(el.dataset.ph)); });
+    document.querySelectorAll('[data-al]').forEach(el => { el.setAttribute('aria-label', this.t(el.dataset.al)); });
   },
 };

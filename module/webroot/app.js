@@ -75,6 +75,9 @@ const fbsJson = async (...args) => JSON.parse(await fbs(...args));
 
 // Left-to-right isolate: keeps "340 MiB" or "boot_a, dtbo_a" in order inside Arabic text.
 const iso = s => '\u2066' + s + '\u2069';
+// First-strong isolate, for a name that may be Arabic or Latin (a module's name): it keeps its
+// own direction and does not reorder the sentence around it.
+const fsi = s => '\u2068' + s + '\u2069';
 const MiB = 1048576, GiB = 1073741824;
 function size(bytes) {
   if (bytes == null || isNaN(bytes)) return '–';
@@ -122,11 +125,21 @@ function sheet(title, bodyHtml, buttons) {
     el.onclick = () => { if (b.onClick) b.onClick(); else closeSheet(); };
     row.append(el);
   });
+  if ($('#sheet').hidden) sheetOpener = document.activeElement;
   $('#sheet').hidden = false;
   row.lastElementChild?.focus();
 }
-function closeSheet() { $('#sheet').hidden = true; }
+// Closing gives the focus back to what opened the sheet, so a keyboard or a screen reader
+// carries on from there.
+let sheetOpener = null;
+function closeSheet() {
+  if ($('#sheet').hidden) return;
+  $('#sheet').hidden = true;
+  if (sheetOpener && sheetOpener.isConnected) sheetOpener.focus();
+  sheetOpener = null;
+}
 $('#sheet').addEventListener('click', e => { if (e.target.id === 'sheet') closeSheet(); });
+document.addEventListener('keydown', e => { if (e.key === 'Escape') closeSheet(); });
 
 /* ---------------------------------------------------------------- state and tabs */
 
@@ -152,6 +165,7 @@ function kv(el, rows) {
 function renderDevice() {
   const i = S.info;
   const name = i.model && i.brand && !i.model.toLowerCase().startsWith(i.brand.toLowerCase()) ? `${i.brand} ${i.model}` : i.model || i.brand;
+  // "slot" stays as it is in both languages: this line is the phone's own Latin names.
   $('#whoLine').textContent = [name, i.platform, i.slot ? 'slot ' + i.slot : ''].filter(Boolean).join(' · ');
   const root = $('#rootChip');
   root.textContent = i.root;
@@ -167,8 +181,10 @@ function renderDevice() {
   kv($('#bootKv'), [
     [T('boot.bootloader'), unlocked === null ? '?' : unlocked ? T('boot.unlocked') : T('boot.locked')],
     ['SELinux', i.selinux],
+    i.root && i.root !== 'unknown' && [T('boot.root'), i.root + (i.root_also ? ' · ' + T('boot.rootAlso', i.root_also) : '')],
     [T('boot.slot'), i.slot || T('boot.none')],
-    [T('boot.layout'), [i.slot ? 'A/B' : 'A-only', i.dynamic ? 'dynamic' : 'static'].join(' · ')],
+    // A/B and A-only are the names everyone uses for the two layouts, in any language.
+    [T('boot.layout'), [i.slot ? 'A/B' : 'A-only', T(i.dynamic ? 'boot.dynamic' : 'boot.static')].join(' · ')],
     [T('boot.treble'), i.treble ? [T('yes'), i.vndk && 'VNDK ' + i.vndk, i.arch].filter(Boolean).join(' · ') : T('no')],
   ]);
   $('#spoofNote').hidden = !i.boot.spoofed;
@@ -197,7 +213,7 @@ function renderDevice() {
     if (life) {
       const used = life >= 11 ? T('stat.exceeded') : `${(life - 1) * 10}–${life * 10}%`;
       const cls = life >= 9 || eol >= 3 ? 'bad' : life >= 6 || eol === 2 ? 'warn' : '';
-      const note = (eol ? T('stat.eol.' + Math.min(eol, 3)) + ' · ' : '') + 'life ' + (st.life_a || '?');
+      const note = (eol ? T('stat.eol.' + Math.min(eol, 3)) + ' · ' : '') + T('stat.life', iso(st.life_a || '?'));
       stats.push(stat(T('stat.storage', st.type === 'emmc' ? 'eMMC' : 'UFS'), used, note, Math.min(life, 10) * 10, cls));
     }
   }
@@ -210,6 +226,27 @@ function stat(label, value, note, pct, cls) {
   return `<div class="stat ${cls}"><span class="l">${esc(label)}</span><span class="v">${esc(value)}</span>` +
     `<span class="n">${esc(note)}</span><div class="meter"><i style="width:${Math.max(0, Math.min(100, pct)).toFixed(0)}%"></i></div></div>`;
 }
+
+// The device as a few lines of text, for a message or a bug report. English on purpose (it is
+// read by whoever helps), and no serial number: fbs info does not carry one.
+function factsText() {
+  const i = S.info;
+  const state = i.boot.device_state || (typeof i.boot.locked === 'boolean' ? (i.boot.locked ? 'locked' : 'unlocked') : '?');
+  return [
+    `Fastboot Studio Companion v${i.fbs}`,
+    `Device: ${[i.brand, i.model].filter(Boolean).join(' ')} (${i.device || '?'})`,
+    `Android: ${i.android || '?'} (SDK ${i.sdk || '?'}) · patch ${i.patch || '?'}`,
+    `Build: ${i.build || '?'}`,
+    `Chip: ${[i.platform, i.soc, i.arch].filter(Boolean).join(' · ')}`,
+    `Kernel: ${i.kernel || '?'}`,
+    i.kmi && `KMI: ${i.kmi}`,
+    `Slot: ${i.slot || 'none'} · ${i.slot ? 'A/B' : 'A-only'} · ${i.dynamic ? 'dynamic' : 'static'}`,
+    `Bootloader: ${state} · AVB ${i.boot.vbstate || '?'}${i.boot.spoofed ? ' (properties say otherwise)' : ''}`,
+    `SELinux: ${i.selinux || '?'}`,
+    `Root: ${i.root || '?'}${i.root_also ? ' (files of ' + i.root_also + ' are also there)' : ''}`,
+  ].filter(Boolean).join('\n');
+}
+$('#factsCopy').onclick = () => { if (S.info) copy(factsText()); };
 
 /* The black box: the previous boot's kernel log from pstore. */
 const PANIC = /Kernel panic|Internal error: Oops|\bOops\b|BUG: |Unable to handle kernel|hard LOCKUP|watchdog bite|Fatal exception|SError/i;
@@ -263,9 +300,10 @@ const Cpu = {
       c.cores.forEach((x, n) => {
         const bar = cores.children[n].firstElementChild;
         bar.style.height = x.cur ? Math.max(4, (x.cur / top) * 100).toFixed(0) + '%' : '0';
-        cores.children[n].title = x.cur ? Math.round(x.cur / 1000) + ' MHz' : 'offline';
+        cores.children[n].title = x.cur ? Math.round(x.cur / 1000) + ' MHz' : T('cpu.offline');
       });
       $('#cpuTemp').textContent = c.cpu_temp == null ? '–' : celsius(c.cpu_temp, c.cpu_temp > 1000 ? 1000 : 1);
+      // RAM and swap are left as they are: the names of the two things, not words.
       if (c.mem_total_kb) {
         $('#memLine').textContent = `RAM ${size((c.mem_total_kb - c.mem_avail_kb) * 1024)} / ${size(c.mem_total_kb * 1024)}`;
       }
@@ -293,11 +331,13 @@ function renderParts() {
     (Parts.f === 'all' || x.cat === Parts.f || (Parts.f === 'other' && !['critical', 'boot'].includes(x.cat))) &&
     (!q || x.name.toLowerCase().includes(q)));
   rows.innerHTML = list.map(x => {
-    const tag = { critical: ['warn', T('cat.critical')], boot: ['info', T('cat.boot')], super: ['', 'super'], never: ['danger', T('cat.never')] }[x.cat];
+    const tag = { critical: ['warn', T('cat.critical')], boot: ['info', T('cat.boot')], super: ['', 'super'], never: ['danger', T('cat.never')] }[x.cat] ||
+      // Maybe a whole disk, not a partition: listed, and left out of the backup sets.
+      (x.sure === false ? ['mute', T('cat.unsure')] : null);
     return `<tr><td><div class="pn">${esc(x.name)}</div><div class="pd">${esc(x.dev)}</div></td>` +
       `<td class="pt">${tag ? `<span class="chip ${tag[0]}">${esc(tag[1])}</span>` : ''}</td><td class="ps">${size(sectors(x.sectors))}</td></tr>`;
   }).join('');
-  $('#partCount').textContent = T('parts.count', list.length, p.parts.length, p.dir);
+  $('#partCount').textContent = T('parts.count', list.length, p.parts.length, iso(p.dir));
 }
 
 $('#partQ').addEventListener('input', e => { Parts.q = e.target.value.trim(); renderParts(); });
@@ -376,7 +416,8 @@ const Log = {
   },
   html(l) {
     if (l.gap) return `<p class="gap">··· ${esc(T('log.gap'))} ···</p>`;
-    return `<p class="${l.c}">${esc(l.text)}</p>`;
+    // A SELinux line opens a sheet, so it is a button for the keyboard and a screen reader too.
+    return l.c === 's' ? `<p class="s" role="button" tabindex="0">${esc(l.text)}</p>` : `<p class="${l.c}">${esc(l.text)}</p>`;
   },
   render() {
     const box = $('#logBox');
@@ -485,6 +526,9 @@ $('#logBox').addEventListener('click', e => {
     `<p class="note warn">${esc(T('avc.warn'))}</p>`,
     [{ label: T('copy'), onClick: () => copy(ruleOf(a)) }, { label: T('close'), kind: '' }]);
 });
+$('#logBox').addEventListener('keydown', e => {
+  if ((e.key === 'Enter' || e.key === ' ') && e.target.matches('p.s')) { e.preventDefault(); e.target.click(); }
+});
 $('#rulesBtn').onclick = () => {
   const rules = Log.rules();
   const text = rules.map(ruleOf).join('\n');
@@ -501,6 +545,8 @@ function backupSet(set) {
   const slot = S.info?.slot || '';
   return p.filter(x => {
     if (x.cat === 'never' || x.sectors == null) return false;
+    // Maybe a whole disk (see part_list): copied only under a name fbs knows.
+    if (x.sure === false && x.cat !== 'critical' && x.cat !== 'boot') return false;
     if (set === 'critical') return x.cat === 'critical';
     if (set === 'boot') return x.cat === 'boot' && (!slot || !/_[ab]$/.test(x.name) || x.name.endsWith(slot));
     return true;
@@ -514,13 +560,28 @@ function renderSets() {
   $('#setCritical').textContent = `${T('set.desc.critical', names(c))} · ${sum(c)}`;
   $('#setBoot').textContent = `${T('set.desc.boot', names(b), iso(S.info?.slot || ''))} · ${sum(b)}`;
   $('#setFull').textContent = `${T('set.desc.full')} · ${sum(f)}`;
+  renderFree();
 }
+
+// Free space next to the button, and a warning before the tap when the chosen set does not
+// fit. fbs keeps 256 MiB spare and refuses by itself; this only says so earlier.
+const Backups = { items: null, root: '', free: null };
+function renderFree() {
+  const el = $('#backupFree');
+  if (Backups.free == null) { el.textContent = ''; return; }
+  const set = $('input[name="set"]:checked').value;
+  const needKb = backupSet(set).reduce((a, x) => a + Math.floor(x.sectors / 2), 0);
+  const low = S.parts && needKb + 262144 > Backups.free;
+  el.textContent = low ? T('err.space', size(needKb * 1024), size(Backups.free * 1024)) : T('backup.free', size(Backups.free * 1024));
+  el.className = 'note' + (low ? ' warn' : '');
+}
+$$('input[name="set"]').forEach(r => r.addEventListener('change', renderFree));
 
 function backupError(ev) {
   if (ev.msg === 'space') return T('err.space', size(ev.need_kb * 1024), size(ev.free_kb * 1024));
-  if (ev.msg === 'storage') return T('err.storage', '/sdcard/FastbootStudio');
+  if (ev.msg === 'storage') return T('err.storage', iso('/sdcard/FastbootStudio'));
   const key = 'err.' + ev.msg;
-  return T(key) === key ? T('err.generic', ev.msg) : T(key);
+  return T(key) === key ? T('err.generic', iso(ev.msg)) : T(key);
 }
 
 let backupRunning = false;
@@ -529,7 +590,7 @@ $('#backupGo').onclick = () => {
   const set = $('input[name="set"]:checked').value;
   if (set === 'full') {
     const f = backupSet('full');
-    sheet(T('backup.confirm'), `<p class="note">${esc(T('backup.confirmBody', f.length, size(f.reduce((a, x) => a + sectors(x.sectors), 0)), '/sdcard/FastbootStudio/Backups'))}</p>`,
+    sheet(T('backup.confirm'), `<p class="note">${esc(T('backup.confirmBody', f.length, size(f.reduce((a, x) => a + sectors(x.sectors), 0)), iso('/sdcard/FastbootStudio/Backups')))}</p>`,
       [{ label: T('cancel') }, { label: T('backup.start'), kind: '', onClick: () => { closeSheet(); runBackup(set); } }]);
   } else {
     runBackup(set);
@@ -545,7 +606,7 @@ async function runBackup(set) {
   rows.innerHTML = '';
   $('#progCard').hidden = false;
   $('#progBar').style.width = '0';
-  let plan = null, doneKb = 0, saved = 0;
+  let plan = null, doneKb = 0, saved = 0, folder = '';
   const row = name => rows.querySelector(`[data-n="${CSS.escape(name)}"] .st`);
   try {
     await Bridge.spawn(['backup', set], line => {
@@ -567,7 +628,7 @@ async function runBackup(set) {
           doneKb += Number(st.dataset.kb || 0);
           st.textContent = ev.event === 'done' ? '✓ ' + size(Number(ev.bytes)) : '✗';
           st.className = 'st ' + (ev.event === 'done' ? 'ok' : 'bad');
-          if (ev.event === 'fail') st.title = ev.msg;
+          if (ev.event === 'fail') { st.title = ev.msg; st.setAttribute('aria-label', '✗ ' + ev.msg); }
         }
         if (ev.event === 'done') saved++;
         if (plan) {
@@ -576,6 +637,7 @@ async function runBackup(set) {
         }
       } else if (ev.event === 'finish') {
         $('#progBar').style.width = '100%';
+        if (ev.saved) folder = ev.folder;
         toast(T('backup.done', ev.saved) + (ev.failed ? ' · ' + T('backup.failed', ev.failed) : ''));
       }
     });
@@ -585,60 +647,103 @@ async function runBackup(set) {
   backupRunning = false;
   go.disabled = false;
   go.textContent = T('backup.start');
-  if (saved) loadBackups();
-}
-
-async function loadBackups() {
-  const list = $('#backupList');
-  try {
-    const b = await fbsJson('backups');
-    $('#backupRoot').textContent = b.root;
-    if (!b.items.length) {
-      list.innerHTML = `<p class="note">${esc(T('backup.none'))}</p>`;
-      return;
-    }
-    list.innerHTML = b.items.map(x => `<div class="bitem" data-name="${esc(x.name)}"><span class="p">${esc(x.name)}/</span>` +
-      `<button class="btn-s" data-act="verify"${x.sums ? '' : ' disabled'}>${esc(T('backup.verify'))}</button>` +
-      `<button class="btn-s danger" data-act="delete">${esc(T('backup.delete'))}</button>` +
-      `<span class="m">${esc(T('backup.files', x.files, x.kb == null ? '–' : size(x.kb * 1024)))}</span></div>`).join('');
-  } catch (e) {
-    list.innerHTML = `<p class="note">${esc(T('err.generic', e.message || e))}</p>`;
+  if (saved) {
+    await loadBackups();
+    // Read the new backup back and check it, unless that was switched off.
+    if (folder && $('#verifyAfter').checked) runVerify(folder);
   }
 }
 
-$('#backupList').addEventListener('click', async e => {
-  const btn = e.target.closest('button');
-  if (!btn || btn.disabled) return;
-  const item = btn.closest('.bitem');
-  if (btn.dataset.act === 'delete') return askDelete(item.dataset.name);
-  const meta = item.querySelector('.m');
-  btn.disabled = true;
-  btn.textContent = T('backup.verifying');
-  let result = null;
+// What a check found, by backup name: 'running', or { ok, bad, names }. Kept here, not in the
+// list's elements, so it is still shown after the list is drawn again (a new backup, a
+// language switch).
+const Verified = new Map();
+
+async function loadBackups() {
+  try {
+    const b = await fbsJson('backups');
+    Backups.items = b.items;
+    Backups.root = b.root;
+    Backups.free = typeof b.free_kb === 'number' ? b.free_kb : null;
+    paintBackups();
+    renderFree();
+  } catch (e) {
+    $('#backupList').innerHTML = `<p class="note">${esc(T('err.generic', e.message || e))}</p>`;
+  }
+}
+
+function paintBackups() {
+  const list = $('#backupList');
+  if (!Backups.items) return;
+  $('#backupRoot').textContent = Backups.root;
+  if (!Backups.items.length) {
+    list.innerHTML = `<p class="note">${esc(T('backup.none'))}</p>`;
+    return;
+  }
+  list.innerHTML = Backups.items.map(x => {
+    const v = Verified.get(x.name);
+    const meta = !v || v === 'running' ? esc(T('backup.files', x.files, x.kb == null ? '–' : size(x.kb * 1024)))
+      : v.bad ? `<span style="color:var(--danger)">✗ ${esc(T('backup.bad', v.bad))}: ${esc(iso(v.names.join(', ')))}</span>`
+        : `<span style="color:var(--ok)">✓ ${esc(T('backup.ok', v.ok))}</span>`;
+    return `<div class="bitem" data-name="${esc(x.name)}"><span class="p">${esc(x.name)}/</span>` +
+      `<button class="btn-s" data-act="verify"${x.sums && v !== 'running' ? '' : ' disabled'}>${esc(T(v === 'running' ? 'backup.verifying' : 'backup.verify'))}</button>` +
+      `<button class="btn-s danger" data-act="delete"${v === 'running' ? ' disabled' : ''}>${esc(T('backup.delete'))}</button>` +
+      `<span class="m">${meta}</span></div>`;
+  }).join('');
+}
+
+async function runVerify(name) {
+  if (Verified.get(name) === 'running') return;
+  Verified.set(name, 'running');
+  paintBackups();
+  let result = null, error = '';
   const bad = [];
   try {
-    await Bridge.spawn(['verify', item.dataset.name], line => {
+    await Bridge.spawn(['verify', name], line => {
       let ev;
       try { ev = JSON.parse(line); } catch { return; }
       if (ev.event === 'file' && ev.state !== 'ok') bad.push(ev.name);
       if (ev.event === 'finish') result = ev;
+      if (ev.event === 'error') error = ev.msg;
     });
-  } catch { /* shown as no result below */ }
-  btn.disabled = false;
-  btn.textContent = T('backup.verify');
-  if (!result) return toast(T('err.generic', 'verify'));
-  meta.innerHTML = result.bad
-    ? `<span style="color:var(--danger)">✗ ${esc(T('backup.bad', result.bad))}: ${esc(bad.join(', '))}</span>`
-    : `<span style="color:var(--ok)">✓ ${esc(T('backup.ok', result.ok))}</span>`;
+  } catch (e) { error = error || String(e.message || e); }
+  if (result) {
+    Verified.set(name, { ok: result.ok, bad: result.bad, names: bad });
+  } else {
+    Verified.delete(name);
+    toast(backupError({ msg: error || 'verify' }));
+  }
+  paintBackups();
+}
+
+$('#backupList').addEventListener('click', e => {
+  const btn = e.target.closest('button');
+  if (!btn || btn.disabled) return;
+  const item = btn.closest('.bitem');
+  if (btn.dataset.act === 'delete') return askDelete(item.dataset.name);
+  runVerify(item.dataset.name);
 });
 
+$('#verifyAfter').checked = readPref('verifyAfter', ['0', '1']) !== '0';
+$('#verifyAfter').addEventListener('change', e => savePref('verifyAfter', e.target.checked ? '1' : '0'));
+
+// How to put a backup back. Words only: nothing here writes to a partition.
+$('#restoreHelp').onclick = () => {
+  const cmd = 'fastboot flash boot_a boot_a.img';
+  sheet(T('restore.title'),
+    `<ol class="steps"><li>${esc(T('restore.1'))}</li><li>${esc(T('restore.2'))}</li><li>${esc(T('restore.3'))}</li></ol>` +
+    `<pre class="code">${esc(cmd)}</pre><p class="note warn">${esc(T('restore.warn'))}</p>`,
+    [{ label: T('copy'), onClick: () => copy(cmd) }, { label: T('close'), kind: '' }]);
+};
+
 function askDelete(name) {
-  sheet(T('backup.deleteTitle'), `<p class="note">${esc(T('backup.deleteBody', name))}</p>`,
+  sheet(T('backup.deleteTitle'), `<p class="note">${esc(T('backup.deleteBody', iso(name)))}</p>`,
     [{ label: T('cancel') }, { label: T('backup.delete'), kind: 'danger', onClick: async () => {
       closeSheet();
       try {
         const r = await fbsJson('delete', name);
         toast(r.ok ? T('backup.deleted') : T('err.generic', r.msg));
+        if (r.ok) Verified.delete(name);
       } catch (e) {
         toast(T('err.generic', e.message || e));
       }
@@ -689,8 +794,14 @@ function renderMods() {
     }
     if (c.kind === 'replace') {
       return `<div class="card conflict"><h3>${esc(T('conflict.replace'))}</h3>${chips([c.by, ...c.modules])}` +
-        `<p class="note">${esc(T('conflict.replace.body', name(c.by), c.modules.map(name).join(i18n.lang === 'ar' ? '، ' : ', ')))}</p><pre class="paths">${esc(c.path)}</pre></div>`;
+        `<p class="note">${esc(T('conflict.replace.body', fsi(name(c.by)), c.modules.map(id => fsi(name(id))).join(i18n.lang === 'ar' ? '، ' : ', ')))}</p><pre class="paths">${esc(c.path)}</pre></div>`;
     }
+    if (c.kind === 'remove') {
+      return `<div class="card conflict"><h3>${esc(T('conflict.remove'))}</h3>${chips([c.by, ...c.modules])}` +
+        `<p class="note">${esc(T('conflict.remove.body', fsi(name(c.by)), c.modules.map(id => fsi(name(id))).join(i18n.lang === 'ar' ? '، ' : ', ')))}</p><pre class="paths">${esc(c.path)}</pre></div>`;
+    }
+    // A kind this page does not know (a newer fbs): nothing, rather than a wrong card.
+    if (c.kind !== 'prop') return '';
     return `<div class="card conflict prop"><h3>${esc(T('conflict.prop'))}</h3><pre class="paths">${esc(c.key)}</pre>` +
       `<div class="pvals">${c.values.map(v => `<b>${esc(name(v.module))}</b><code>${esc(v.value)}</code>`).join('')}</div>` +
       `<p class="note">${esc(T('conflict.prop.body'))}</p></div>`;
@@ -734,7 +845,15 @@ $('#rebootGrid').addEventListener('click', e => {
   const name = b.querySelector('b').textContent;
   sheet(T('reboot.ask', name), `<p class="note">${esc(T('reboot.body'))}</p>`, [
     { label: T('cancel') },
-    { label: T('reboot.go'), kind: 'danger', onClick: async () => { closeSheet(); try { await fbs('reboot', b.dataset.r); } catch (err) { toast(T('err.generic', err.message)); } } },
+    { label: T('reboot.go'), kind: 'danger', onClick: async () => {
+      closeSheet();
+      // fbs answers before it restarts the phone; a refusal ({"ok":false}) is said, not dropped.
+      try {
+        const out = (await fbs('reboot', b.dataset.r)).trim();
+        const r = out ? JSON.parse(out) : { ok: true };
+        if (!r.ok) toast(r.msg === 'edl-qualcomm-only' ? `EDL: ${T('reboot.edl')}` : T('err.generic', iso(r.msg)));
+      } catch (err) { toast(T('err.generic', err.message || err)); }
+    } },
   ]);
 });
 
@@ -744,7 +863,7 @@ $('#bundleGo').onclick = async e => {
   btn.textContent = T('bundle.making');
   try {
     const r = await fbsJson(...($('#redact').checked ? ['bundle'] : ['bundle', 'plain']));
-    $('#bundleOut').textContent = r.ok ? T('bundle.saved', r.file) : T('err.generic', r.msg);
+    $('#bundleOut').textContent = r.ok ? T('bundle.saved', iso(r.file)) : T('err.generic', r.msg);
   } catch (err) {
     $('#bundleOut').textContent = T('err.generic', err.message || err);
   }

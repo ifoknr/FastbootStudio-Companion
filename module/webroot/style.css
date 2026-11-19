@@ -351,3 +351,12 @@ pre.code .hit { color: var(--danger); }
   :root:not([data-theme="dark"]) .brand .logo-dark { display: none; }
   :root:not([data-theme="dark"]) .brand .logo-light { display: block; }
 }
+
+/* ---------- touch and keyboard: the small pills keep their look, but a finger gets a taller
+   target (the invisible ::after), and the log box and its SELinux lines show the focus ring. */
+.fbtn, .btn-s { position: relative; }
+.fbtn::after, .btn-s::after { content: ""; position: absolute; inset: -.22rem 0; }
+.logbox:focus-visible, .logbox p.s:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+.steps { margin: 0; padding-inline-start: 1.3rem; font-size: .9rem; line-height: 1.7; color: var(--dim); display: flex; flex-direction: column; gap: .4rem; }
+@media (prefers-reduced-motion: reduce) { * { scroll-behavior: auto; } }
+#progTitle { min-width: 0; overflow-wrap: anywhere; }
