@@ -9,7 +9,7 @@
   --danger: #F2615C; --danger-soft: #231315; --danger-line: #5C2B2B;
   --ok: #5BD97A; --info: #7FA7F5; --info-soft: #141B2B; --info-line: #2D3E66;
   --scrim: rgba(5, 7, 10, .72); --shadow: rgba(0, 0, 0, .55);
-  --ui: "Roboto", "Noto Sans Arabic", "Noto Kufi Arabic", system-ui, sans-serif;
+  --ui: "Noto Kufi Arabic", "Roboto", "Noto Sans Arabic", system-ui, sans-serif;
   --mono: "Roboto Mono", "Droid Sans Mono", ui-monospace, monospace;
   --top: env(safe-area-inset-top, 0px);
   --bottom: env(safe-area-inset-bottom, 0px);
@@ -40,8 +40,7 @@
   color-scheme: light;
 }
 /* Tablets and wide screens: everything a size up. */
-@media (min-width: 700px) { :root { font-size: 17px; } }
-@media (min-width: 1100px) { :root { font-size: 18px; } }
+@media (min-width: 700px) { :root { font-size: 18px; } }
 
 * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
 [hidden] { display: none !important; }
@@ -360,3 +359,222 @@ pre.code .hit { color: var(--danger); }
 .steps { margin: 0; padding-inline-start: 1.3rem; font-size: .9rem; line-height: 1.7; color: var(--dim); display: flex; flex-direction: column; gap: .4rem; }
 @media (prefers-reduced-motion: reduce) { * { scroll-behavior: auto; } }
 #progTitle { min-width: 0; overflow-wrap: anywhere; }
+
+/* ---------- fonts: the same faces as Fastboot Studio on Windows and Android, so the page does
+   not change with the phone's ROM. Noto Kufi Arabic for Arabic, Roboto for Latin and digits,
+   Roboto Mono for values; all three under the SIL Open Font License (fonts/*-OFL.txt). Each
+   file holds one script only (unicode-range), so Kufi never draws a Latin letter or a digit.
+   A WebView that cannot load them shows the phone's own fonts, as before. */
+@font-face { font-family: "Noto Kufi Arabic"; font-style: normal; font-weight: 400; font-display: swap; src: url("fonts/noto-kufi-arabic-arabic-400-normal.woff2") format("woff2"); unicode-range: U+0600-06FF, U+0750-077F, U+0870-088E, U+0890-0891, U+0897-08E1, U+08E3-08FF, U+204F, U+2E41, U+FB50-FDFF, U+FE70-FE74, U+FE76-FEFC; }
+@font-face { font-family: "Noto Kufi Arabic"; font-style: normal; font-weight: 500; font-display: swap; src: url("fonts/noto-kufi-arabic-arabic-500-normal.woff2") format("woff2"); unicode-range: U+0600-06FF, U+0750-077F, U+0870-088E, U+0890-0891, U+0897-08E1, U+08E3-08FF, U+204F, U+2E41, U+FB50-FDFF, U+FE70-FE74, U+FE76-FEFC; }
+@font-face { font-family: "Noto Kufi Arabic"; font-style: normal; font-weight: 600; font-display: swap; src: url("fonts/noto-kufi-arabic-arabic-600-normal.woff2") format("woff2"); unicode-range: U+0600-06FF, U+0750-077F, U+0870-088E, U+0890-0891, U+0897-08E1, U+08E3-08FF, U+204F, U+2E41, U+FB50-FDFF, U+FE70-FE74, U+FE76-FEFC; }
+@font-face { font-family: "Noto Kufi Arabic"; font-style: normal; font-weight: 700; font-display: swap; src: url("fonts/noto-kufi-arabic-arabic-700-normal.woff2") format("woff2"); unicode-range: U+0600-06FF, U+0750-077F, U+0870-088E, U+0890-0891, U+0897-08E1, U+08E3-08FF, U+204F, U+2E41, U+FB50-FDFF, U+FE70-FE74, U+FE76-FEFC; }
+@font-face { font-family: "Roboto"; font-style: normal; font-weight: 400; font-display: swap; src: url("fonts/roboto-latin-400-normal.woff2") format("woff2"); unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD; }
+@font-face { font-family: "Roboto"; font-style: normal; font-weight: 500; font-display: swap; src: url("fonts/roboto-latin-500-normal.woff2") format("woff2"); unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD; }
+@font-face { font-family: "Roboto"; font-style: normal; font-weight: 600; font-display: swap; src: url("fonts/roboto-latin-600-normal.woff2") format("woff2"); unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD; }
+@font-face { font-family: "Roboto"; font-style: normal; font-weight: 700; font-display: swap; src: url("fonts/roboto-latin-700-normal.woff2") format("woff2"); unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD; }
+@font-face { font-family: "Roboto Mono"; font-style: normal; font-weight: 400; font-display: swap; src: url("fonts/roboto-mono-latin-400-normal.woff2") format("woff2"); unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD; }
+
+/* ---------- one system. Everything above keeps its colours and layout; this part gives every
+   piece the same measures, so nothing sits on a fraction of a pixel:
+     spacing   4 8 12 16 20 24 px          (--s1 ... --s6)
+     radius    8 px inside a card, 16 px for a tile, 24 px for a card and the sheet, pills
+               for buttons. Inside = outside minus the padding between them (24 - 16 = 8).
+     height    48 px for a main button, 44 px in a row with a field, 40 px for a small one;
+               every control answers a finger on at least 48 px.
+     edge      --edge is the line around a control: 3:1 against what is behind it.
+     lift      one shadow (--lift), for what floats over the page: the sheet and the toast. */
+:root {
+  --s1: .25rem; --s2: .5rem; --s3: .75rem; --s4: 1rem; --s5: 1.25rem; --s6: 1.5rem;
+  --r-in: .5rem; --r-tile: 1rem; --r-card: 1.5rem; --r-pill: 999px;
+  --lift: 0 .75rem 2rem -.5rem var(--shadow), 0 .125rem .5rem -.125rem var(--shadow);
+  --left: env(safe-area-inset-left, 0px); --right: env(safe-area-inset-right, 0px);
+}
+/* KernelSU, MMRL and WebUI X hand the system bars to the page as --window-inset-*; a
+   WebView under its host's own top bar reports zero for both, and nothing is added. */
+@supports (padding: max(0px, 1px)) {
+  :root {
+    --top: max(env(safe-area-inset-top, 0px), var(--window-inset-top, 0px));
+    --bottom: max(env(safe-area-inset-bottom, 0px), var(--window-inset-bottom, 0px));
+    --left: max(env(safe-area-inset-left, 0px), var(--window-inset-left, 0px));
+    --right: max(env(safe-area-inset-right, 0px), var(--window-inset-right, 0px));
+  }
+}
+/* Text that was too faint to read on the cards: at least 4.5:1 on every surface now. --edge
+   is new. */
+:root, :root[data-theme="dark"] { --faint: #a9a9b0; --edge: #8e8e95; --on-danger: #4a0f0c; }
+@media (prefers-color-scheme: light) {
+  :root:not([data-theme="dark"]) { --faint: #66656d; --edge: #77767e; --on-danger: #ffffff; }
+}
+:root[data-theme="light"] { --faint: #66656d; --edge: #77767e; --on-danger: #ffffff; }
+/* White on the night theme's pale red could not be read. */
+.btn.danger { color: var(--on-danger); }
+
+html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
+body { line-height: 1.5; -webkit-font-smoothing: antialiased; text-rendering: optimizeLegibility; }
+/* Arabic in Kufi stands taller than Latin: more room between lines, so no mark is cut. */
+[lang="ar"] body { line-height: 1.75; }
+::placeholder { color: var(--faint); opacity: 1; }
+button { -webkit-appearance: none; appearance: none; margin: 0; line-height: 1.25; touch-action: manipulation; }
+[lang="ar"] button { line-height: 1.5; }
+button:disabled, .btn:disabled, .rbtn:disabled { opacity: .45; cursor: not-allowed; }
+
+/* header */
+.appbar { padding: .5rem 1rem .5rem; padding: calc(var(--top) + .5rem) calc(var(--right) + 1rem) .5rem calc(var(--left) + 1rem); gap: .75rem; min-height: 3.5rem; }
+.brand { flex: 1 1 auto; gap: .75rem; }
+.who { min-width: 0; flex: 1 1 auto; }
+.appbar .title { line-height: 1.25; }
+.appbar .sub { font-size: .75rem; line-height: 1.25rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.bar-end { flex: none; }
+/* A narrow phone has no room for the root manager's name beside the phone's: it is in the
+   Boot card's Root row as well. */
+@media (max-width: 29.9375rem) { .appbar #rootChip { display: none; } }
+@media (max-width: 21.25rem) { .nav button { font-size: .625rem; padding: .25rem 0; } .nav .ico { padding: .25rem .75rem; } }
+.iconbtn { width: 2.5rem; height: 2.5rem; border: 1px solid var(--edge); background: transparent; position: relative; flex: none; }
+.iconbtn::after { content: ""; position: absolute; top: -.25rem; right: -.25rem; bottom: -.25rem; left: -.25rem; }
+.iconbtn:active { background: var(--hover); }
+.iconbtn svg { width: 1.25rem; height: 1.25rem; stroke-width: 1.75; }
+
+main { padding: 1rem 1rem 6rem; padding: 1rem calc(var(--right) + 1rem) calc(var(--bottom) + 6rem) calc(var(--left) + 1rem); }
+.view { gap: .75rem; }
+
+/* tabs */
+.nav { left: 0; right: 0; padding: .375rem .25rem .25rem; padding: .375rem calc(var(--right) + .25rem) calc(var(--bottom) + .25rem) calc(var(--left) + .25rem); border-top: 1px solid var(--line); }
+.nav button { min-height: 3.25rem; padding: .25rem .125rem; gap: .25rem; font-size: .75rem; line-height: 1rem; min-width: 0; color: var(--dim); }
+.nav button span:last-child { max-width: 100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+[lang="ar"] .nav button { line-height: 1.25rem; }
+.nav svg { width: 1.5rem; height: 1.5rem; stroke-width: 1.75; }
+.nav .ico { padding: .25rem 1rem; height: 2rem; }
+.nav button:active .ico { background: var(--hover); }
+.nav button[aria-selected="true"] .ico { background: var(--sel); }
+
+/* cards and what sits in them */
+.card { border-radius: var(--r-card); padding: 1rem; }
+.card.flush { padding: .25rem 1rem; }
+.card h3 { margin: 0 0 .75rem; font-size: 1rem; line-height: 1.5rem; gap: .75rem; }
+.card h3 > span:first-child:not(.chip) { flex: 1 1 auto; min-width: 0; }
+/* The folder path gives way to its title, not the other way round. */
+.card h3 > #backupRoot { flex: 0 100 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.card.calm { gap: .75rem; padding: .75rem 1rem; }
+.dot { width: .5rem; height: .5rem; }
+.chip { font-size: .75rem; line-height: 1.25rem; padding: .0625rem .5rem; border-radius: var(--r-in); flex: none; }
+[lang="ar"] .chip { line-height: 1.5rem; }
+.kv { gap: .5rem 1rem; font-size: .9375rem; line-height: 1.5rem; }
+.grid2 { gap: .75rem; }
+.stat { border-radius: var(--r-tile); padding: .75rem 1rem; gap: .125rem; }
+.stat .l, .stat .n { font-size: .8125rem; line-height: 1.25rem; }
+.stat .v { font-size: 1.5rem; line-height: 2rem; }
+.meter { height: .375rem; border-radius: .375rem; margin-top: .375rem; }
+.meter i { border-radius: .375rem; }
+.meter.big { height: .5rem; margin: 0 0 .75rem; }
+.cores { gap: .5rem; height: 5.5rem; }
+.core { gap: .25rem; }
+.core .bar { border-radius: .25rem; min-height: .25rem; }
+.core span { font-size: .75rem; line-height: 1rem; font-variant-numeric: tabular-nums; }
+.legend { font-size: .8125rem; margin-top: .5rem; }
+#cpuTemp, #progCount, #superFree, .bitem .m, .ptable .ps, .prow .st { font-variant-numeric: tabular-nums; }
+.note { margin: .5rem 0 0; font-size: .875rem; line-height: 1.5rem; }
+[lang="ar"] .note { line-height: 1.75rem; }
+
+/* controls */
+.row { gap: .5rem; align-items: stretch; }
+.search { min-height: 2.75rem; padding: 0 1rem; font-size: .9375rem; border: 1px solid var(--edge); border-radius: var(--r-pill); -webkit-appearance: none; appearance: none; }
+.search:focus { outline: 2px solid var(--accent); outline-offset: 1px; }
+.filters { gap: .75rem .5rem; }
+.fbtn { min-height: 2.25rem; padding: .25rem .875rem; font-size: .875rem; border-color: var(--edge); background: transparent; }
+.fbtn::after { top: -.375rem; bottom: -.375rem; left: 0; right: 0; }
+.fbtn.rules { background: var(--info-soft); border-color: var(--info); }
+.btn-s { min-height: 2.5rem; padding: .25rem 1rem; font-size: .875rem; color: var(--text); border-color: var(--edge); background: transparent; display: inline-flex; align-items: center; justify-content: center; }
+.btn-s::after { top: -.25rem; bottom: -.25rem; left: 0; right: 0; }
+.row .btn-s { min-height: 2.75rem; }
+.btn-s.danger { border-color: var(--danger); }
+.fbtn:active, .btn-s:active, .seg button:active, .rbtn:active, .lbtn:active, .btn.ghost:active { background: var(--hover); }
+.seg { border-radius: var(--r-pill); padding: .1875rem; gap: .25rem; border-color: var(--edge); background: transparent; }
+.seg button { min-height: 2.5rem; padding: .25rem .5rem; font-size: .875rem; border-radius: var(--r-pill); min-width: 0; }
+.seg button[aria-pressed="true"] { box-shadow: none; background: var(--sel); color: var(--on-sel); font-weight: 600; }
+.btn { min-height: 3rem; padding: .5rem 1.25rem; font-size: 1rem; }
+.btn:active { opacity: .85; }
+.btn.ghost { border-color: var(--edge); background: transparent; }
+.btn.ghost:active { opacity: 1; }
+.fbtn, .btn-s, .seg button, .btn, .rbtn, .lbtn, .iconbtn, .nav .ico { transition: background-color .15s ease, opacity .15s ease; }
+
+/* partitions and modules */
+.superbar { height: 1rem; border-radius: var(--r-in); }
+.slegend { gap: .25rem 1.25rem; font-size: .875rem; margin-top: .75rem; }
+.slegend b::before { width: .5rem; height: .5rem; border-radius: .125rem; }
+.ptable td { padding: .75rem .25rem; }
+.ptable .pn { font-size: .875rem; line-height: 1.25rem; }
+.ptable .pd { font-size: .75rem; line-height: 1.125rem; }
+.ptable .mn { display: flex; flex-wrap: wrap; align-items: baseline; gap: 0 .5rem; }
+.ptable .mn small { margin: 0; font-size: .8125rem; }
+.ptable .mm { display: flex; flex-wrap: wrap; gap: 0 .5rem; color: var(--faint); font-size: .75rem; line-height: 1.25rem; }
+.ptable .mm .pd { text-align: start; }
+.ptable .mflags { gap: .25rem; }
+.ptable tr.off td { opacity: .7; }
+.mgrid { gap: .75rem; }
+/* The kind of a conflict is a short bar beside its title: a border on the card's edge was
+   cut by the round corner. */
+.card.conflict, .card.conflict.prop { border-inline-start: 0 !important; }
+.card.conflict h3 { justify-content: flex-start; }
+.card.conflict h3::before { content: ""; width: .25rem; height: 1.25rem; border-radius: .125rem; background: var(--danger); flex: none; }
+.card.conflict.prop h3::before { background: var(--warn); }
+.card.conflict h3 .chip { margin-inline-start: auto; }
+.mchips { gap: .375rem; margin: 0 0 .5rem; }
+.paths { padding: .5rem .75rem; border-radius: var(--r-in); font-size: .8125rem; line-height: 1.375rem; white-space: pre-wrap; overflow-wrap: anywhere; word-break: break-word; }
+.pvals { gap: .25rem 1rem; font-size: .875rem; }
+
+/* logs */
+.logbox { border-radius: var(--r-tile); padding: .5rem; font-size: .8125rem; line-height: 1.25rem; }
+.logbox p { padding: .0625rem .25rem; border-radius: .25rem; }
+.logbox p.e { background: var(--alert-bg); }
+
+/* backup */
+.stack { gap: .75rem; }
+.opt { gap: .75rem; padding: .75rem 1rem; border-radius: var(--r-tile); border-color: var(--edge); }
+.opt input, .check input { width: 1.25rem; height: 1.25rem; margin: .125rem 0 0; flex: none; }
+.opt span { min-width: 0; flex: 1 1 auto; }
+.opt b { line-height: 1.5rem; }
+.opt small { font-size: .875rem; line-height: 1.375rem; }
+[lang="ar"] .opt small { line-height: 1.625rem; }
+.opt small .sum { display: block; font-variant-numeric: tabular-nums; }
+.opt:has(input:checked) { border-color: var(--accent); }
+.check { gap: .75rem; align-items: flex-start; padding: .25rem 0 .75rem; min-height: 2.5rem; cursor: pointer; }
+.stack > .check { padding: .25rem .25rem; }
+.prog { gap: .5rem; }
+.prow { font-size: .875rem; line-height: 1.25rem; }
+.blist { gap: .75rem; }
+.bitem { gap: .125rem .5rem; }
+.bitem .p { font-size: .8125rem; line-height: 1.25rem; }
+.bitem .m { font-size: .8125rem; line-height: 1.25rem; }
+.links { gap: .5rem; margin-top: 1rem; }
+.lbtn { gap: .75rem; padding: .625rem .75rem; min-height: 3.5rem; border-radius: var(--r-in); border-color: var(--edge); background: transparent; }
+.lbtn svg { width: 1.5rem; height: 1.5rem; stroke-width: 1.75; }
+.lbtn b { font-size: .875rem; line-height: 1.25rem; }
+.lbtn small { font-size: .75rem; line-height: 1.125rem; }
+
+/* tools */
+.rgrid { gap: .5rem; }
+.rbtn { border-radius: var(--r-in); padding: .75rem; gap: .125rem; min-height: 4rem; border-color: var(--edge); background: transparent; justify-content: center; }
+.rbtn b { line-height: 1.5rem; }
+.rbtn small { font-size: .8125rem; line-height: 1.25rem; }
+
+/* sheet and toast */
+.sheet { top: 0; right: 0; bottom: 0; left: 0; }
+.sheet .in { border-radius: var(--r-card) var(--r-card) 0 0; padding: 1.25rem 1rem 1.25rem; padding: 1.25rem calc(var(--right) + 1rem) calc(var(--bottom) + 1.25rem) calc(var(--left) + 1rem); gap: .75rem; border-top: 0; box-shadow: var(--lift); }
+.sheet h4 { font-size: 1.125rem; line-height: 1.75rem; }
+.row2 { gap: .5rem; }
+pre.code { padding: .75rem; border-radius: var(--r-in); font-size: .8125rem; line-height: 1.375rem; }
+.toast { left: 1rem; right: 1rem; padding: .75rem 1rem; border-radius: var(--r-tile); border-color: var(--edge); font-size: .875rem; box-shadow: var(--lift); }
+#v-log:not([hidden]) { min-height: 30rem; }
+/* Over an open sheet the toast goes to the top, clear of the sheet's text and buttons. */
+.sheet:not([hidden]) ~ .toast { bottom: auto; top: calc(var(--top) + 4.5rem); }
+
+@media (min-width: 760px) {
+  main { padding: 1.25rem calc(var(--right) + 1.5rem) calc(var(--bottom) + 6.5rem) calc(var(--left) + 1.5rem); }
+  .sheet .in { border-radius: var(--r-card); padding-bottom: 1.25rem; }
+}
+@media (min-width: 900px) {
+  .nav { left: auto; right: auto; inset-inline-start: 0; padding: calc(var(--top) + 5rem) .5rem 1rem; border-top: 0; }
+  main { padding: 1.5rem 2rem 2rem; }
+}
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; animation: none !important; } }

@@ -12,6 +12,7 @@ else
     ui_print "  or press Action in Magisk for a text report"
 fi
 
+# Everything in the folder, the WebUI's fonts included: folders 0755, files 0644.
 set_perm_recursive "$MODPATH" 0 0 0755 0644
 set_perm "$MODPATH/bin/fbs" 0 0 0755
 set_perm "$MODPATH/action.sh" 0 0 0755

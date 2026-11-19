@@ -29,6 +29,16 @@ esac
 case $CHANNEL:$NAME in
     "stable:"*"(Beta)"*) echo "a stable build cannot be named Beta: $NAME" >&2; bad=1 ;;
 esac
+# The fonts the WebUI names are in the zip, each family with its licence text.
+sed -n 's/.*url("\(fonts\/[^"]*\)").*/\1/p' "$ROOT/module/webroot/style.css" > "${TMPDIR:-/tmp}/fbs-fonts.$$"
+while read -r font; do
+    [ -s "$ROOT/module/webroot/$font" ] || { echo "style.css names $font, which is not there" >&2; bad=1; }
+done < "${TMPDIR:-/tmp}/fbs-fonts.$$"
+rm -f "${TMPDIR:-/tmp}/fbs-fonts.$$"
+for lic in NotoKufiArabic Roboto RobotoMono; do
+    grep -q "SIL Open Font License" "$ROOT/module/webroot/fonts/$lic-OFL.txt" 2>/dev/null ||
+        { echo "module/webroot/fonts/$lic-OFL.txt is missing" >&2; bad=1; }
+done
 grep -q "^## $VER\$" "$ROOT/CHANGELOG.md" || { echo "CHANGELOG.md has no '## $VER' section" >&2; bad=1; }
 [ $bad = 0 ] || exit 1
 

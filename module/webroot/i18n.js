@@ -78,6 +78,8 @@ const STRINGS = {
     'links.source': 'Module source',
     'demo': 'Demo data. Open this page from your root manager to see your own phone.',
 
+    'boot.green': 'verified (green)',
+    'boot.odd': 'The bootloader reports {0}, yet root is present. A phone relocked with its owner\'s own key can be both; on any other phone that report was changed, so do not rely on it.',
     'boot.root': 'Root', 'boot.rootAlso': 'files of {0} are also there', 'boot.dynamic': 'dynamic', 'boot.static': 'static',
     'stat.life': 'life {0}', 'cpu.offline': 'offline', 'cat.unsure': 'Not in backups',
     'facts.copy': 'Copy device details',
@@ -167,6 +169,8 @@ const STRINGS = {
     'links.source': 'كود الوحدة',
     'demo': 'بيانات تجريبية. افتح الصفحة من تطبيق الروت عشان تشوف جوالك.',
 
+    'boot.green': 'موثّق (أخضر)',
+    'boot.odd': 'البوت لودر يقول إنه {0}، والروت موجود. الجوال اللي انقفل بمفتاح صاحبه ممكن يكون كذا؛ غير كذا فالكلام هذا متغيّر، فلا تعتمد عليه.',
     'boot.root': 'الروت', 'boot.rootAlso': 'وملفات {0} باقية', 'boot.dynamic': 'ديناميكي', 'boot.static': 'ثابت',
     'stat.life': 'العمر {0}', 'cpu.offline': 'متوقف', 'cat.unsure': 'خارج الباك أب',
     'facts.copy': 'انسخ معلومات الجهاز',

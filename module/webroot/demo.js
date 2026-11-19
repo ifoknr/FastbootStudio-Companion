@@ -25,7 +25,7 @@
     fbs: '2.5.3', channel: 'stable', model: 'Demo Phone', brand: 'Demo', device: 'demo', product: 'demo_mt6789',
     android: '14', sdk: '34', patch: '2026-08-05', build: 'DEMO-14.0.1', platform: 'mt6789', soc: 'mediatek',
     arch: 'arm64-v8a', slot: '_a', dynamic: true, treble: true, vndk: '34',
-    boot: { vbstate: 'orange', device_state: 'unlocked', locked: false, spoofed: true },
+    boot: { vbstate: 'orange', device_state: 'unlocked', locked: false, spoofed: true, bootloader_word: 'unlocked', root_contradicts: false },
     kernel: '5.15.148-android13-8-00017-gabc123', kmi: '5.15-android13', selinux: 'Enforcing', root: 'KernelSU', root_also: '',
     boot_reason: 'kernel_panic',
     battery: { level: 78, health: 91, cycles: 312, temp_dc: 334 },
@@ -192,6 +192,16 @@
       (auto === 'verify' ? b : document.querySelector('#backupGo')).click();
     };
     setTimeout(tap, 300);
+  }
+
+  // For the smoke test: ?fontcheck=1 writes the families that really loaded on <html>.
+  if (new URLSearchParams(location.search).get('fontcheck') && document.fonts) {
+    // After the first screen is drawn: a font is fetched only once some text needs it.
+    setTimeout(() => document.fonts.ready.then(() => {
+      const got = new Set();
+      document.fonts.forEach(f => { if (f.status === 'loaded') got.add(f.family.replace(/"/g, '')); });
+      document.documentElement.dataset.fonts = [...got].sort().join(', ');
+    }), 1500);
   }
 
   window.ksu = {

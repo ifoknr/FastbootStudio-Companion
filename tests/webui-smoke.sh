@@ -53,5 +53,11 @@ dom=$("$CHROME" --headless --no-sandbox --disable-gpu --virtual-time-budget=4000
 lang=light
 check "day mode applies" 'data-theme="light"'
 check "header button offers night mode" 'data-dark="0"'
+# The page's own fonts are loaded, not the computer's.
+fonts=$("$CHROME" --headless --no-sandbox --disable-gpu --virtual-time-budget=4000 --dump-dom "file://$PAGE?lang=ar&fontcheck=1" 2>/dev/null | grep -o 'data-fonts="[^"]*"')
+case $fonts in
+    *"Noto Kufi Arabic"*"Roboto"*) ;;
+    *) echo "FAIL the bundled fonts did not load: $fonts"; fails=$((fails + 1)) ;;
+esac
 [ $fails -eq 0 ] && echo "webui smoke passed"
 [ $fails -eq 0 ]

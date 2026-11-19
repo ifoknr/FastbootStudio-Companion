@@ -188,6 +188,12 @@ function renderDevice() {
     [T('boot.treble'), i.treble ? [T('yes'), i.vndk && 'VNDK ' + i.vndk, i.arch].filter(Boolean).join(' · ') : T('no')],
   ]);
   $('#spoofNote').hidden = !i.boot.spoofed;
+  // The bootloader's word is shown as it is; when it does not fit with root, a line says so.
+  const odd = $('#oddNote');
+  odd.hidden = !i.boot.root_contradicts;
+  if (i.boot.root_contradicts) {
+    odd.textContent = T('boot.odd', T(i.boot.bootloader_word === 'locked' ? 'boot.locked' : 'boot.green'));
+  }
 
   $('#kmiChip').hidden = !i.kmi;
   kv($('#kernelKv'), [
@@ -202,7 +208,7 @@ function renderDevice() {
   const b = i.battery;
   if (b.health != null) {
     const cls = b.health >= 80 ? 'good' : b.health >= 60 ? 'warn' : 'bad';
-    stats.push(stat(T('stat.battery'), b.health + '%', T('stat.cycles', b.cycles ?? '–', celsius(b.temp_dc, 10)), b.health, cls));
+    stats.push(stat(T('stat.battery'), b.health + '%', T('stat.cycles', b.cycles ?? '–', iso(celsius(b.temp_dc, 10))), b.health, cls));
   } else if (b.level != null) {
     stats.push(stat(T('stat.battery'), b.level + '%', T('stat.level', b.level), b.level, ''));
   }
@@ -244,6 +250,7 @@ function factsText() {
     `Bootloader: ${state} · AVB ${i.boot.vbstate || '?'}${i.boot.spoofed ? ' (properties say otherwise)' : ''}`,
     `SELinux: ${i.selinux || '?'}`,
     `Root: ${i.root || '?'}${i.root_also ? ' (files of ' + i.root_also + ' are also there)' : ''}`,
+    i.boot.root_contradicts && `Note: the bootloader reports ${i.boot.bootloader_word || 'green'}, yet root is present`,
   ].filter(Boolean).join('\n');
 }
 $('#factsCopy').onclick = () => { if (S.info) copy(factsText()); };
@@ -557,9 +564,18 @@ function renderSets() {
   const names = l => iso(l.slice(0, 5).map(x => x.name).join(', ') + (l.length > 5 ? '…' : ''));
   const sum = l => T('set.sum', l.length, size(l.reduce((a, x) => a + sectors(x.sectors), 0)));
   const c = backupSet('critical'), b = backupSet('boot'), f = backupSet('full');
-  $('#setCritical').textContent = `${T('set.desc.critical', names(c))} · ${sum(c)}`;
-  $('#setBoot').textContent = `${T('set.desc.boot', names(b), iso(S.info?.slot || ''))} · ${sum(b)}`;
-  $('#setFull').textContent = `${T('set.desc.full')} · ${sum(f)}`;
+  // The count and size go on a line of their own: after a wrapped list of Latin names, an
+  // Arabic line put the number at the far end of the names.
+  const put = (id, desc, l) => {
+    const el = $(id), s = document.createElement('span');
+    el.textContent = desc;
+    s.className = 'sum';
+    s.textContent = sum(l);
+    el.append(s);
+  };
+  put('#setCritical', T('set.desc.critical', names(c)), c);
+  put('#setBoot', T('set.desc.boot', names(b), iso(S.info?.slot || '')), b);
+  put('#setFull', T('set.desc.full'), f);
   renderFree();
 }
 
@@ -817,7 +833,7 @@ function renderMods() {
     ].filter(Boolean).join('');
     const counts = [m.files && T('mods.files', m.files), m.props && T('mods.props', m.props)].filter(Boolean).join(' · ');
     return `<tr class="${m.enabled && !m.removing ? '' : 'off'}"><td><div class="mn"><b>${esc(m.name)}</b><small class="ltr">${esc(m.version)}</small></div>` +
-      `<div class="pd">${esc(m.id)}${counts ? ' · ' + esc(counts) : ''}</div></td><td><div class="mflags">${flags}</div></td></tr>`;
+      `<div class="mm"><span class="pd">${esc(m.id)}</span>${counts ? `<span>${esc(counts)}</span>` : ''}</div></td><td><div class="mflags">${flags}</div></td></tr>`;
   }).join('') : `<tr><td class="note">${esc(T('mods.empty'))}</td></tr>`;
 }
 
@@ -835,7 +851,8 @@ function renderTools() {
     `<button class="rbtn" data-r="${id}"${ok ? '' : ' disabled'}><b>${name}</b><small class="ltr">${esc(ok ? cmd : why)}</small></button>`).join('');
   kv($('#aboutKv'), [
     [T('about.version'), 'v' + i.fbs + (i.channel === 'beta' ? ' · ' + T('beta') : '')],
-    [T('about.backups'), '/sdcard/FastbootStudio/Backups'],
+    // A zero-width space after each slash: a narrow screen breaks the path there, not mid-word.
+    [T('about.backups'), '/sdcard/FastbootStudio/Backups'.replace(/\//g, '/\u200b')],
   ]);
 }
 
