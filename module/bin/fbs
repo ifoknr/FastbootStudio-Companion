@@ -26,6 +26,10 @@ FBS_LIB=${FBS_LIB:-${0%/*}/../lib}
 # shellcheck source=SCRIPTDIR/../lib/modules.sh
 . "$FBS_LIB/modules.sh" || exit 1
 
+# A signal ends the job through "exit", so the clean-up a command asked for (trap ... EXIT in
+# backup_run and modules_json) runs under every shell.
+trap 'exit 1' HUP INT TERM
+
 usage() {
     cat <<EOF
 fbs $FBS_VERSION ($FBS_CHANNEL), Fastboot Studio Companion

@@ -32,7 +32,39 @@ num() {
 
 # A JSON string for one line of text: control characters dropped, \ and " escaped.
 js() {
-    printf '"%s"' "$(printf '%s' "$1" | tr -d '\000-\037' | sed -e 's/\\/\\\\/g' -e 's/"/\\"/g')"
+    # Most values are plain words, and those need no escaping: no fork for them.
+    case $1 in
+        *[!A-Za-z0-9\ ._:/,+=@-]*)
+            printf '"%s"' "$(printf '%s' "$1" | tr -d '\000-\037' | sed -e 's/\\/\\\\/g' -e 's/"/\\"/g')"
+            ;;
+        *) printf '"%s"' "$1" ;;
+    esac
+}
+
+# BYTES becomes $1 sectors as bytes, in text. A partition past 4 GiB does not fit mksh's
+# 32-bit numbers, so the product is made from two halves that each stay small.
+bytes_of() {
+    _hi=$(($1 / 1000000))
+    _lo=$(($1 % 1000000 * 512))
+    _hi=$((_hi * 512 + _lo / 1000000))
+    _lo=$((_lo % 1000000))
+    if [ "$_hi" -gt 0 ]; then
+        BYTES=$_hi$(printf '%06d' "$_lo")
+    else
+        BYTES=$_lo
+    fi
+}
+
+# N becomes the free space, in KiB, of the filesystem that holds $1 (or its nearest folder
+# that exists); null when df cannot say.
+free_kb() {
+    _fp=$1
+    while [ -n "$_fp" ] && [ ! -d "$_fp" ]; do
+        case $_fp in */*) _fp=${_fp%/*} ;; *) _fp= ;; esac
+    done
+    _free=$(df -Pk "${_fp:-/}" 2>/dev/null | tail -n 1 | { read -r _ _ _ _a _; echo "$_a"; })
+    num "$_free"
+    case $N in -*) N=null ;; esac
 }
 
 # true, false or null.

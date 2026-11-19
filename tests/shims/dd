@@ -1,0 +1,25 @@
+#!/bin/sh
+# dd for the fake phone. The big partitions (super, userdata) are three-byte stand-ins there,
+# so their image is made as a hole of the size sysfs claims: stat sees a 9 GiB file and no disk
+# is filled. FAKE_DD_SHORT=<partition> cuts that partition's copy short, as a full disk would.
+real=$(command -pv dd)
+src=
+out=
+for a in "$@"; do
+    case $a in
+        if=*) src=${a#if=} ;;
+        of=*) out=${a#of=} ;;
+    esac
+done
+name=${out##*/}
+name=${name%.img}
+if [ "$(wc -c < "$src")" -eq 3 ]; then
+    read -r sectors < "$FBS_ROOT/sys/class/block/${src##*/}/size"
+    "$real" if=/dev/null of="$out" bs=512 seek="$sectors" 2>/dev/null
+    exit
+fi
+if [ "${FAKE_DD_SHORT:-}" = "$name" ]; then
+    "$real" if="$src" of="$out" bs=512 count=1 2>/dev/null
+    exit
+fi
+"$real" "$@"

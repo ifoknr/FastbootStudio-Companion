@@ -28,7 +28,10 @@ backup_run() {
         return 1
     fi
     echo $$ > "$RUN/backup.pid"
-    trap 'rm -f "$RUN/backup.pid"' EXIT
+    # _partial is the folder being written; it goes too when the job is cut off (bin/fbs turns
+    # a signal into an exit), so a half-written backup is not left for the next run to find.
+    _partial=
+    trap 'rm -f "$RUN/backup.pid"; [ -z "$_partial" ] || rm -rf "$_partial"' EXIT
 
     _slot=$(current_slot)
     _plan=
@@ -39,13 +42,21 @@ backup_run() {
         return 1
     }
     # Word splitting on purpose: one "name dev" pair per line.
+    # (and a third word, "part" or "odd": see part_list)
     # shellcheck disable=SC2086
     set -- $_rows
-    while [ $# -ge 2 ]; do
+    while [ $# -ge 3 ]; do
         _n=$1
         _d=$2
-        shift 2
+        _k=$3
+        shift 3
         category "$_n"
+        # A link that may be a whole disk is copied only under a name from the lists in
+        # category: as "other" (or super) it could be the whole phone, userdata included.
+        case $_k:$CAT in
+            odd:critical | odd:boot) ;;
+            odd:*) continue ;;
+        esac
         case $_set:$CAT in
             *:never) continue ;;
             critical:critical | full:*) ;;
@@ -79,8 +90,7 @@ backup_run() {
     for _old in "$DATA"/Backups/.partial-*/; do
         [ -d "$_old" ] && rm -rf "${_old%/}"
     done
-    _free=$(df -Pk "$DATA/Backups" 2>/dev/null | tail -n 1 | { read -r _ _ _ _a _; echo "$_a"; })
-    num "$_free"
+    free_kb "$DATA/Backups"
     # Keep 256 MiB spare so a full backup never fills the phone to the last byte.
     if [ "$N" != null ] && [ $((_kb + 262144)) -gt "$N" ]; then
         printf '{"event":"error","msg":"space","need_kb":%s,"free_kb":%s}\n' "$_kb" "$N"
@@ -95,6 +105,7 @@ backup_run() {
         echo '{"event":"error","msg":"storage"}'
         return 1
     }
+    _partial=$_out
     printf '{"event":"plan","set":"%s","folder":%s,"count":%s,"kb":%s}\n' "$_set" "$(js "$_name")" "$_count" "$_kb"
 
     _table=
@@ -104,19 +115,37 @@ backup_run() {
         _n=${_p%%:*}
         _d=${_p#*:}
         rd "$R/sys/class/block/$_d/size"
-        printf '{"event":"start","name":"%s","kb":%s}\n' "$_n" "$((REPLY / 2))"
+        printf '{"event":"start","name":%s,"kb":%s}\n' "$(js "$_n")" "$((REPLY / 2))"
+        bytes_of "$REPLY"
+        # An image counts only when dd ended well, the file is as long as the partition and
+        # its hash could be taken: a short copy must not pass for a backup.
+        _bytes=
+        _h=
         if _err=$(dd if="$R/dev/block/$_d" of="$_out/$_n.img" bs=4194304 2>&1); then
-            _h=$(cd "$_out" && sha256sum "$_n.img")
-            _h=${_h%% *}
-            _bytes=$(stat -c %s "$_out/$_n.img")
+            _bytes=$(stat -c %s "$_out/$_n.img" 2>/dev/null)
+            if [ "$_bytes" != "$BYTES" ]; then
+                _err="size: $_bytes of $BYTES bytes"
+            else
+                _h=$(cd "$_out" && sha256sum "$_n.img")
+                _h=${_h%% *}
+                case $_h in
+                    *[!0-9a-f]*) _h= ;;
+                esac
+                [ ${#_h} -eq 64 ] || {
+                    _h=
+                    _err="sha256sum gave no hash"
+                }
+            fi
+        fi
+        if [ -n "$_h" ]; then
             printf '%s  %s\n' "$_h" "$_n.img" >> "$_out/SHA256SUMS"
             _table="$_table$_n$TAB$_bytes$TAB$_h$NL"
             _saved=$((_saved + 1))
-            printf '{"event":"done","name":"%s","bytes":"%s","sha256":"%s"}\n' "$_n" "$_bytes" "$_h"
+            printf '{"event":"done","name":%s,"bytes":"%s","sha256":"%s"}\n' "$(js "$_n")" "$_bytes" "$_h"
         else
             rm -f "$_out/$_n.img"
             _failed=$((_failed + 1))
-            printf '{"event":"fail","name":"%s","msg":%s}\n' "$_n" "$(js "$_err")"
+            printf '{"event":"fail","name":%s,"msg":%s}\n' "$(js "$_n")" "$(js "$_err")"
         fi
     done
 
@@ -134,19 +163,23 @@ backup_run() {
             printf 'partition\tbytes\tsha256\n'
             printf '%s' "$_table"
         } > "$_out/backup-info.txt"
+        # On the disk before the folder gets its name: a finished backup is a written one.
+        sync
         mv "$_out" "$DATA/Backups/$_name" || {
             echo '{"event":"error","msg":"storage"}'
             return 1
         }
     else
-        rmdir "$_out" 2>/dev/null
+        rm -rf "$_out"
     fi
+    _partial=
     printf '{"event":"finish","folder":%s,"saved":%s,"failed":%s}\n' "$(js "$_name")" "$_saved" "$_failed"
 }
 
 # fbs backups: the backup folders on the phone, newest first.
 backups_json() {
-    printf '{"root":%s,"items":[' "$(js "$DATA/Backups")"
+    free_kb "$DATA/Backups"
+    printf '{"root":%s,"free_kb":%s,"items":[' "$(js "$DATA/Backups")" "$N"
     _sep=
     # Folder names start with the model, so sort on the date at the end of the name.
     for _f in "$DATA"/Backups/*/; do
@@ -205,7 +238,11 @@ verify_run() {
     fi
     _ok=0
     _bad=0
-    while read -r _want _file; do
+    # A list written on Windows may end its lines with CR LF, and any list may lack the last
+    # newline: both still count.
+    _cr=$(printf '\r')
+    while read -r _want _file || [ -n "$_want" ]; do
+        _file=${_file%"$_cr"}
         _file=${_file#\*}
         [ -n "$_file" ] || continue
         if [ ! -r "$_out/$_file" ]; then
@@ -217,5 +254,10 @@ verify_run() {
         if [ $_state = ok ]; then _ok=$((_ok + 1)); else _bad=$((_bad + 1)); fi
         printf '{"event":"file","name":%s,"state":"%s"}\n' "$(js "$_file")" "$_state"
     done < "$_out/SHA256SUMS"
+    # A list with nothing in it proves nothing: not "all match".
+    if [ $((_ok + _bad)) -eq 0 ]; then
+        echo '{"event":"error","msg":"empty-sums"}'
+        return 1
+    fi
     printf '{"event":"finish","ok":%s,"bad":%s}\n' "$_ok" "$_bad"
 }

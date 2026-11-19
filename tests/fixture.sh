@@ -80,6 +80,7 @@ while read -r name sectors; do
         printf 'big' > "$R/dev/block/$dev"
     fi
     w "sys/class/block/$dev/size" "$sectors"
+    w "sys/class/block/$dev/partition" "$i"
     ln -s "../../../$dev" "$R/dev/block/platform/bootdevice/by-name/$name"
     i=$((i + 1))
 done <<'EOF'
@@ -109,6 +110,20 @@ EOF
 # The preloader lives in the eMMC boot area and has no by-name link here.
 head -c 4096 /dev/urandom > "$R/dev/block/mmcblk0boot0"
 w sys/class/block/mmcblk0boot0/size 8
+# What Android 10 and later add to by-name: the disks themselves, under their device names
+# (no "partition" file in sysfs), and a partition nobody named. The disks must not be listed;
+# the unnamed partition is listed but stays out of the backup sets.
+printf 'big' > "$R/dev/block/mmcblk0"
+w sys/class/block/mmcblk0/size 244277248
+ln -s ../../../mmcblk0 "$R/dev/block/platform/bootdevice/by-name/mmcblk0"
+ln -s ../../../mmcblk0boot0 "$R/dev/block/platform/bootdevice/by-name/mmcblk0boot0"
+head -c 4096 /dev/urandom > "$R/dev/block/mmcblk0p$i"
+w "sys/class/block/mmcblk0p$i/size" 8
+w "sys/class/block/mmcblk0p$i/partition" "$i"
+ln -s "../../../mmcblk0p$i" "$R/dev/block/platform/bootdevice/by-name/mmcblk0p$i"
+# Names no partition has, but a broken table could: they must not break the JSON or the lists.
+ln -s ../../../mmcblk0p20 "$R/dev/block/platform/bootdevice/by-name/bad name"
+ln -s ../../../mmcblk0p20 "$R/dev/block/platform/bootdevice/by-name/we\"ird"
 
 mkdir -p "$R/dev/block/mapper"
 d=0
@@ -176,6 +191,17 @@ put addon vendor/etc/addon.conf
 ln -s ../vendor "$M/addon/system/vendor"
 put fonts_1 vendor/etc/fonts_1.conf
 ln -s ../vendor "$M/fonts_1/system/vendor"
+# The same property with spaces around it in one module: still one property.
+printf 'ro.trim.me=1\n' > "$M/fonts_2/system.prop"
+printf '  ro.trim.me = 2\n' > "$M/addon/system.prop"
+# A folder no root manager would make: listed, with its name intact, and not scanned.
+mod 'odd "id' 'Odd'
+put 'odd "id' system/etc/hosts
+# A whiteout: debloat removes the hosts file two other modules put in place. Making the node
+# needs root, so the test that reads it is skipped where mknod is refused.
+rm -f "$R/has-whiteout"
+mkdir -p "$M/debloat/system/etc"
+if mknod "$M/debloat/system/etc/hosts" c 0 0 2>/dev/null; then : > "$R/has-whiteout"; fi
 mod off 'Off'
 put off system/etc/hosts
 : > "$M/off/disable"

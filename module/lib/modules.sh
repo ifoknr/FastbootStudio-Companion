@@ -5,6 +5,8 @@
 #   file     two or more modules put the same file in place; only one copy is used
 #   replace  a module replaces a whole folder (.replace), hiding files another module adds there
 #   prop     modules set the same system.prop property to different values; the last one wins
+#   remove   a module removes a file or folder (a whiteout: a character device in its place)
+#            that another module puts there or adds files inside
 #
 # vendor/, product/, system_ext/ and odm/ at a module's top level are the same places as
 # system/vendor/ and so on, so both spellings are compared as one.
@@ -15,6 +17,19 @@ MOD_DIRS="system vendor product system_ext odm"
 modules_json() {
     _root=$R/data/adb/modules
     _w=$RUN/scan
+    # One folder per process (the WebUI, the Action button and the Windows app may all scan
+    # at once), removed when the process ends however it ends. What a killed scan left
+    # behind goes too, once its process is gone.
+    for _old in "$RUN"/scan "$RUN"/scan.*; do
+        [ -d "$_old" ] || continue
+        case ${_old##*.} in
+            *[!0-9]*) ;;
+            *) kill -0 "${_old##*.}" 2>/dev/null && continue ;;
+        esac
+        rm -rf "$_old"
+    done
+    _w=$RUN/scan.$$
+    trap 'rm -rf "$RUN/scan.$$"' EXIT
     rm -rf "$_w"
     mkdir -p "$_w" || {
         echo '{"error":"run-dir"}'
@@ -23,6 +38,7 @@ modules_json() {
     : > "$_w/files"
     : > "$_w/repl"
     : > "$_w/props"
+    : > "$_w/gone"
 
     printf '{"root":"/data/adb/modules","modules":['
     _msep=
@@ -50,6 +66,10 @@ modules_json() {
         [ -e "$_m/skip_mount" ] && _mount=false
         _live=$_on
         [ $_removing = true ] && _live=false
+        # A root manager takes only letters, digits, dot, dash and underscore in an id. A
+        # folder named otherwise is listed, but not scanned: its name would not survive the
+        # tab-separated lists below.
+        case $_id in *[!A-Za-z0-9._-]*) _live=false ;; esac
 
         _nfiles=0
         # KernelSU and APatch move system/vendor (product, ...) to the module's top level and
@@ -67,12 +87,24 @@ modules_json() {
             grep -v '/\.replace$' "$_w/one" | sed -e "s#^#/#" -e "s#\$#$TAB$_id#" > "$_w/mine"
             _nfiles=$(wc -l < "$_w/mine")
             cat "$_w/mine" >> "$_w/files"
+            # Whiteouts. Any character device in a module's tree is one (root managers make
+            # them with "mknod c 0 0"), so the device numbers are not read: stat spells them
+            # differently from one toolbox to the next.
+            (
+                cd "$_m" || exit 0
+                for _p in $MOD_DIRS; do
+                    [ -d "$_p" ] && [ ! -L "$_p" ] && find "$_p" -type c 2>/dev/null
+                done
+            ) | sed -E -e 's#^(vendor|product|system_ext|odm)/#system/\1/#' -e "s#^#/#" -e "s#\$#$TAB$_id#" >> "$_w/gone"
         fi
 
         _nprops=0
         if [ $_live = true ] && [ -f "$_m/system.prop" ]; then
+            # Spaces around the key and the value go here, before the sort: "ro.x" and
+            # " ro.x " are one property and have to end up next to each other.
             tr -d '\r' < "$_m/system.prop" | grep -v '^[[:space:]]*#' | grep '=' |
-                sed -e "s#=#$TAB#" -e "s#\$#$TAB$_id#" > "$_w/mine"
+                sed -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//' -e "s#[[:space:]]*=[[:space:]]*#$TAB#" \
+                    -e "s#\$#$TAB$_id#" > "$_w/mine"
             _nprops=$(wc -l < "$_w/mine")
             cat "$_w/mine" >> "$_w/props"
         fi
@@ -86,8 +118,8 @@ modules_json() {
         _action=false
         [ -f "$_m/action.sh" ] && _action=true
 
-        printf '%s{"id":"%s","name":%s,"version":%s,"author":%s,"enabled":%s,"removing":%s,"mount":%s,"files":%s,"props":%s,"scripts":[%s],"webui":%s,"action":%s}' \
-            "$_msep" "$_id" "$(js "${_name:-$_id}")" "$(js "$_ver")" "$(js "$_author")" \
+        printf '%s{"id":%s,"name":%s,"version":%s,"author":%s,"enabled":%s,"removing":%s,"mount":%s,"files":%s,"props":%s,"scripts":[%s],"webui":%s,"action":%s}' \
+            "$_msep" "$(js "$_id")" "$(js "${_name:-$_id}")" "$(js "$_ver")" "$(js "$_author")" \
             "$_on" "$_removing" "$_mount" "$((_nfiles + 0))" "$((_nprops + 0))" "$_scripts" "$_webui" "$_action"
         _msep=,
     done
@@ -134,19 +166,9 @@ modules_json() {
     [ -n "$_set" ] && file_conflict
 
     # replace: a folder one module replaces, against files other modules add inside it.
-    while IFS="$TAB" read -r _d _by; do
-        grep -F "$_d/" "$_w/sorted" > "$_w/inside" || continue
-        _hit=
-        while IFS="$TAB" read -r _p _id; do
-            [ "$_id" = "$_by" ] && continue
-            case $_p in "$_d"/*) ;; *) continue ;; esac
-            case " $_hit " in *" $_id "*) ;; *) _hit="$_hit $_id" ;; esac
-        done < "$_w/inside"
-        [ -n "$_hit" ] || continue
-        printf '%s{"kind":"replace","path":%s,"by":"%s","modules":[%s]}' \
-            "$_csep" "$(js "$_d")" "$_by" "$(id_list $_hit)"
-        _csep=,
-    done < "$_w/repl"
+    hidden_conflicts replace "$_w/repl"
+    # remove: a path one module removes, against the same path or files inside it from others.
+    hidden_conflicts remove "$_w/gone"
 
     # prop: the same key from two or more modules with different values.
     sort -t "$TAB" -k1,1 "$_w/props" > "$_w/props.s"
@@ -168,7 +190,7 @@ modules_json() {
         fi
         [ "$_v" = "$_first" ] || _differ=true
         _count=$((_count + 1))
-        _vals="$_vals${_vals:+,}{\"module\":\"$_id\",\"value\":$(js "$_v")}"
+        _vals="$_vals${_vals:+,}{\"module\":$(js "$_id"),\"value\":$(js "$_v")}"
     done < "$_w/props.s"
     [ -n "$_key" ] && prop_conflict
 
@@ -176,10 +198,30 @@ modules_json() {
     rm -rf "$_w"
 }
 
+# hidden_conflicts <kind> <list of "path<TAB>module">: one conflict for every path in the list
+# that other modules put files at or under.
+hidden_conflicts() {
+    while IFS="$TAB" read -r _d _by; do
+        grep -F "$_d" "$_w/sorted" > "$_w/inside" || continue
+        _hit=
+        while IFS="$TAB" read -r _p _id; do
+            [ "$_id" = "$_by" ] && continue
+            case $_p in "$_d" | "$_d"/*) ;; *) continue ;; esac
+            case " $_hit " in *" $_id "*) ;; *) _hit="$_hit $_id" ;; esac
+        done < "$_w/inside"
+        [ -n "$_hit" ] || continue
+        # Word splitting on purpose: _hit is a space-separated list of module ids.
+        # shellcheck disable=SC2086
+        printf '%s{"kind":"%s","path":%s,"by":%s,"modules":[%s]}' \
+            "$_csep" "$1" "$(js "$_d")" "$(js "$_by")" "$(id_list $_hit)"
+        _csep=,
+    done < "$2"
+}
+
 # '"a","b"' from 'a b'.
 id_list() {
     _l=
-    for _i in "$@"; do _l="$_l${_l:+,}\"$_i\""; done
+    for _i in "$@"; do _l="$_l${_l:+,}$(js "$_i")"; done
     printf '%s' "$_l"
 }
 

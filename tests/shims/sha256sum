@@ -1,0 +1,10 @@
+#!/bin/sh
+# sha256sum for the fake phone: the real one, except that the 9 GiB stand-in images get a
+# made-up hash (reading them takes too long for a test) and FAKE_SHA_EMPTY=<file> answers
+# nothing, as a tool that broke would.
+[ "${FAKE_SHA_EMPTY:-}" = "$1" ] && exit 0
+if [ $# -eq 1 ] && [ "$(stat -c %s "$1" 2>/dev/null || echo 0)" -gt 1073741824 ]; then
+    printf '%064d  %s\n' 0 "$1"
+    exit 0
+fi
+"$(command -pv sha256sum)" "$@"

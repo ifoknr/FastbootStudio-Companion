@@ -24,16 +24,35 @@ soc_vendor() {
     echo unknown
 }
 
+# I_ROOT becomes the root manager, I_ROOT_ALSO any other one that left its files behind.
+# The manager that is running comes first: it says so itself (APatch and KernelSU set
+# APATCH and KSU for what they start, and each one's own tool answers only where it is
+# installed and on the PATH). The files under /data/adb come last, because a manager that
+# was replaced leaves them there: on their own they would name the old one.
 root_manager() {
-    if [ -e "$R/data/adb/ksud" ]; then
-        echo KernelSU
-    elif [ -e "$R/data/adb/apd" ]; then
-        echo APatch
-    elif [ -d "$R/data/adb/magisk" ]; then
-        echo Magisk
-    else
-        echo unknown
+    I_ROOT=
+    if [ "${APATCH:-}" = true ]; then
+        I_ROOT=APatch
+    elif [ "${KSU:-}" = true ]; then
+        I_ROOT=KernelSU
+    elif magisk -v >/dev/null 2>&1; then
+        I_ROOT=Magisk
+    elif ksud -V >/dev/null 2>&1; then
+        I_ROOT=KernelSU
+    elif apd -V >/dev/null 2>&1; then
+        I_ROOT=APatch
     fi
+    I_ROOT_ALSO=
+    for _m in KernelSU:ksud APatch:apd Magisk:magisk; do
+        [ -e "$R/data/adb/${_m#*:}" ] || continue
+        _m=${_m%%:*}
+        if [ -z "$I_ROOT" ]; then
+            I_ROOT=$_m
+        elif [ "$_m" != "$I_ROOT" ]; then
+            I_ROOT_ALSO="$I_ROOT_ALSO${I_ROOT_ALSO:+, }$_m"
+        fi
+    done
+    [ -n "$I_ROOT" ] || I_ROOT=unknown
 }
 
 # "5.15.148-android13-8-g1234" gives "5.15-android13". Older, non-GKI kernels give nothing.
@@ -89,11 +108,19 @@ boot_state() {
             1) _pstate=locked ;;
         esac
     fi
+    # What the bootloader itself said, before the properties are asked.
+    _bl=$I_DEVSTATE
     [ -n "$I_DEVSTATE" ] || I_DEVSTATE=$_pstate
-    if [ "$I_ROOT" != unknown ] && [ "$I_DEVSTATE" != unlocked ]; then
+    # Root alone does not overrule the bootloader's own word: a phone relocked with its
+    # owner's AVB key starts a rooted image and is locked (its state is yellow). Root does
+    # decide when the bootloader said nothing, or said "locked" with green, which no rooted
+    # phone can be: then the command line was rewritten too.
+    if [ "$I_ROOT" != unknown ] && [ "$I_DEVSTATE" != unlocked ] &&
+        { [ -z "$_bl" ] || [ "$(bootarg verifiedbootstate)" = green ]; }; then
         I_DEVSTATE=unlocked
         # Root on a phone the bootloader or the properties call locked: they were changed.
         [ "$I_VBSTATE" != green ] || I_VBSTATE=orange
+        [ -z "$_bl" ] || I_VB_SPOOFED=true
     fi
     if [ "$I_DEVSTATE" = unlocked ] && [ "$_pstate" = locked ]; then
         I_VB_SPOOFED=true
@@ -132,7 +159,7 @@ collect() {
     elif [ -n "$_p" ] && [ "$_p" != "$I_VBSTATE" ]; then
         I_VB_SPOOFED=true
     fi
-    I_ROOT=$(root_manager)
+    root_manager
     boot_state
 
     rd "$R/proc/sys/kernel/osrelease"; I_KERNEL=$REPLY
@@ -177,8 +204,8 @@ info_json() {
         "$(jb "$I_DYNAMIC")" "$(jb "$I_TREBLE")" "$(js "$I_VNDK")"
     printf '"boot":{"vbstate":%s,"device_state":%s,"locked":%s,"spoofed":%s},' \
         "$(js "$I_VBSTATE")" "$(js "$I_DEVSTATE")" "$(jb "$I_LOCKED")" "$I_VB_SPOOFED"
-    printf '"kernel":%s,"kmi":%s,"selinux":%s,"root":%s,"boot_reason":%s,' \
-        "$(js "$I_KERNEL")" "$(js "$I_KMI")" "$(js "$I_SELINUX")" "$(js "$I_ROOT")" "$(js "$I_REASON")"
+    printf '"kernel":%s,"kmi":%s,"selinux":%s,"root":%s,"root_also":%s,"boot_reason":%s,' \
+        "$(js "$I_KERNEL")" "$(js "$I_KMI")" "$(js "$I_SELINUX")" "$(js "$I_ROOT")" "$(js "$I_ROOT_ALSO")" "$(js "$I_REASON")"
     printf '"battery":{"level":%s,"health":%s,"cycles":%s,"temp_dc":%s},' \
         "$I_BAT_LEVEL" "$I_BAT_HEALTH" "$I_BAT_CYCLES" "$I_BAT_TEMP"
     printf '"memory":{"total_kb":%s,"avail_kb":%s},"storage":%s}\n' \
@@ -206,6 +233,9 @@ report_text() {
     _n=0
     if _dir=$(byname_dir); then
         for _l in "$_dir"/*; do [ -e "$_l" ] && _n=$((_n + 1)); done
+        # The links that are whole disks do not count: the same list as fbs parts.
+        _n=$(part_list | wc -l)
+        _n=$((_n + 0))
     fi
     _ab=; [ -n "$I_SLOT" ] && _ab=" · A/B"
     _dyn=; [ "$I_DYNAMIC" = true ] && _dyn=" · dynamic"
@@ -220,7 +250,7 @@ report_text() {
     echo "Kernel      $I_KERNEL"
     [ -n "$I_KMI" ] && echo "KMI         $I_KMI"
     echo "SELinux     $I_SELINUX"
-    echo "Root        $I_ROOT"
+    echo "Root        $I_ROOT${I_ROOT_ALSO:+ (files of $I_ROOT_ALSO are also there)}"
     echo "Partitions  $_n"
     echo "Last boot   ${I_REASON:-unknown}"
     _c=$(modules_json 2>/dev/null | grep -o '"kind":' | wc -l)

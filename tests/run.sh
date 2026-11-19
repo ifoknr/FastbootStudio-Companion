@@ -59,17 +59,37 @@ for SHN in $SHELLS; do
     expect "memory" jqt "$out" '.memory.total_kb == 7864320 and .memory.avail_kb == 2725000'
     expect "SELinux" jqt "$out" '.selinux == "Enforcing"'
     expect "channel is reported" jqt "$out" '.channel == "beta" or .channel == "stable"'
+    expect "no other root manager's files" jqt "$out" '.root_also == ""'
+    # The manager that runs says so itself; the files another one left behind come second.
+    out=$(APATCH=true fbs info)
+    expect "APATCH in the environment wins over KernelSU's files" jqt "$out" '.root == "APatch" and .root_also == "KernelSU"'
+    out=$(KSU=true fbs info)
+    expect "KSU in the environment" jqt "$out" '.root == "KernelSU" and .root_also == ""'
+    : > "$R/use-magisk"
+    mkdir -p "$R/data/adb/magisk"
+    out=$(fbs info)
+    expect "a running Magisk wins over KernelSU's files, both named" jqt "$out" '.root == "Magisk" and .root_also == "KernelSU"'
+    expect "report names both" sh -c 'printf "%s\n" "$1" | grep -q "^Root  *Magisk (files of KernelSU are also there)$"' _ "$(fbs report)"
+    rm -f "$R/use-magisk"
+    out=$(fbs info)
+    expect "files only: both named, the old order" jqt "$out" '.root == "KernelSU" and .root_also == "Magisk"'
+    rmdir "$R/data/adb/magisk"
 
     # ---- report
     out=$(fbs report)
     expect "report names the KMI" sh -c 'printf "%s" "$1" | grep -q "^KMI  *5.15-android13$"' _ "$out"
-    expect "report counts partitions" sh -c 'printf "%s" "$1" | grep -q "^Partitions  *22$"' _ "$out"
+    expect "report counts partitions" sh -c 'printf "%s" "$1" | grep -q "^Partitions  *24$"' _ "$out"
 
     # ---- parts
     out=$(fbs parts)
     expect "parts is JSON" jqt "$out" '.parts | type == "array"'
     expect "by-name dir found under platform/" jqt "$out" '.dir == "/dev/block/platform/bootdevice/by-name"'
-    expect "22 by-name + raw preloader" jqt "$out" '.parts | length == 23'
+    expect "22 by-name + raw preloader" jqt "$out" '.parts | length == 24'
+    expect "whole disks under by-name are not partitions" jqt "$out" \
+        '[.parts[] | select(.name == "mmcblk0" or .name == "mmcblk0boot0" or .dev == "mmcblk0")] | length == 0'
+    expect "an unnamed partition is listed as unsure" jqt "$out" \
+        '([.parts[] | select(.name == "mmcblk0p23")][0] | .sure == false and .cat == "other") and ([.parts[] | select(.sure == false)] | length == 1)'
+    expect "names that would break the lists are left out" jqt "$out" '[.parts[] | select(.name | test("[ \"]"))] | length == 0'
     expect "raw preloader is critical" jqt "$out" '.parts[] | select(.name == "preloader_raw") | .dev == "mmcblk0boot0" and .cat == "critical"'
     expect "super keeps its 9 GiB in sectors" jqt "$out" '.parts[] | select(.name == "super") | .sectors == 18874368 and .cat == "super"'
     expect "userdata is never" jqt "$out" '.parts[] | select(.name == "userdata") | .cat == "never"'
@@ -146,6 +166,46 @@ for SHN in $SHELLS; do
     out=$(fbs backup full)
     expect "full skips userdata only" jql "$out" \
         '[.[] | select(.event == "done") | .name] | (index("userdata") == null and index("super") != null and length == 22)'
+    expect "full leaves out the unnamed partition and the disks" jql "$out" \
+        '[.[] | select(.event == "start") | .name] | (index("mmcblk0p23") == null and index("mmcblk0") == null and index("mmcblk0boot0") == null)'
+    expect "a 9 GiB image is checked against its partition's size" jql "$out" \
+        '.[] | select(.event == "done" and .name == "super") | .bytes == "9663676416"'
+    expect "the backup was synced before it got its name" test -s "$R/sync.log"
+
+    # ---- backup integrity: a short copy or a missing hash is a failure, not an image
+    for sh_n in 0 1 2048 8 2097152 4194303 18874368 234881024 2147483647; do
+        want=$(awk -v n="$sh_n" 'BEGIN { printf "%.0f", n * 512 }')
+        expect "bytes_of $sh_n" test "$($SH -c '. "$1"; bytes_of "$2"; echo "$BYTES"' _ "$ROOT/module/lib/common.sh" "$sh_n")" = "$want"
+    done
+    sleep 1
+    out=$(FAKE_DD_SHORT=nvram fbs backup critical)
+    expect "a short copy fails that partition" jql "$out" \
+        '([.[] | select(.event == "fail")] | length == 1 and .[0].name == "nvram" and (.[0].msg | startswith("size: 512 of 4096"))) and .[-1].saved == 10 and .[-1].failed == 1'
+    dir2=$WORK/data/Backups/$(printf '%s\n' "$out" | jq -r 'select(.event == "finish") | .folder')
+    expect "the short image is not kept or listed" sh -c 'test ! -e "$1/nvram.img" && ! grep -q nvram "$1/SHA256SUMS" && ! grep -q "^nvram" "$1/backup-info.txt"' _ "$dir2"
+    rm -rf "$dir2"
+    sleep 1
+    out=$(FAKE_SHA_EMPTY=seccfg.img fbs backup critical)
+    expect "no hash, no image" jql "$out" \
+        '([.[] | select(.event == "fail")] | length == 1 and .[0].name == "seccfg") and .[-1].saved == 10'
+    dir2=$WORK/data/Backups/$(printf '%s\n' "$out" | jq -r 'select(.event == "finish") | .folder')
+    expect "no empty line in SHA256SUMS" sh -c 'test ! -e "$1/seccfg.img" && test "$(grep -c "^[0-9a-f]\{64\}  " "$1/SHA256SUMS")" -eq 10 && test "$(wc -l < "$1/SHA256SUMS")" -eq 10' _ "$dir2"
+    rm -rf "$dir2"
+    # A name from the lists that points at a whole device (MediaTek's preloader on UFS does)
+    # is still copied; only an unknown one is kept out.
+    head -c 4096 /dev/urandom > "$R/dev/block/mmcblk0boot1"
+    mkdir -p "$R/sys/class/block/mmcblk0boot1"
+    echo 8 > "$R/sys/class/block/mmcblk0boot1/size"
+    ln -s ../../../mmcblk0boot1 "$R/dev/block/platform/bootdevice/by-name/tee1"
+    out=$(fbs parts)
+    expect "a known name on a whole device is unsure but critical" jqt "$out" '.parts[] | select(.name == "tee1") | .sure == false and .cat == "critical"'
+    sleep 1
+    out=$(fbs backup critical)
+    expect "and is in the critical set" jql "$out" '.[0].count == 12 and ([.[] | select(.event == "done") | .name] | index("tee1") != null)'
+    rm -rf "$WORK/data/Backups/$(printf '%s\n' "$out" | jq -r 'select(.event == "finish") | .folder')"
+    rm -f "$R/dev/block/platform/bootdevice/by-name/tee1" "$R/dev/block/mmcblk0boot1"
+    rm -rf "$R/sys/class/block/mmcblk0boot1"
+    expect "nothing unfinished is left" sh -c '! ls -a "$1" | grep -q "^\.partial-"' _ "$WORK/data/Backups"
 
     # ---- backup refusals
     out=$(FAKE_DF_AVAIL=1000 fbs backup critical)
@@ -164,6 +224,7 @@ for SHN in $SHELLS; do
     # ---- backups and verify
     out=$(fbs backups)
     expect "three backups listed" jqt "$out" '.items | length == 3'
+    expect "free space is reported with the list" jqt "$out" '.free_kb == 100000000'
     expect "newest first" jqt "$out" '.items[0].files == 22 and .items[2].files == 11'
     name=${dir##*/}
     out=$(fbs verify "$name")
@@ -172,6 +233,16 @@ for SHN in $SHELLS; do
     out=$(fbs verify "$name")
     expect "verify catches a changed image" jql "$out" \
         '(.[] | select(.name == "nvram.img") | .state == "bad") and .[-1].bad == 1'
+    # A list as Windows writes it (CR LF, no last newline) still checks; an empty one does not pass.
+    cp "$dir/SHA256SUMS" "$WORK/sums.keep"
+    head -c -1 "$dir/nvram.img" > "$WORK/nvram.tmp" && cat "$WORK/nvram.tmp" > "$dir/nvram.img"
+    sed 's/$/\r/' "$WORK/sums.keep" | head -c -1 > "$dir/SHA256SUMS"
+    out=$(fbs verify "$name")
+    expect "verify reads CR LF lines and a last line without a newline" jql "$out" '.[-1] == {"event":"finish","ok":11,"bad":0}'
+    : > "$dir/SHA256SUMS"
+    out=$(fbs verify "$name")
+    expect "an empty list is not a pass" jqt "$out" '.event == "error" and .msg == "empty-sums"'
+    cp "$WORK/sums.keep" "$dir/SHA256SUMS"
     out=$(fbs verify ../etc)
     expect "verify stays inside Backups" jqt "$out" '.event == "error"'
     out=$(fbs verify ".partial-$name")
@@ -208,7 +279,14 @@ for SHN in $SHELLS; do
 
     # ---- modules and their conflicts
     out=$(fbs modules)
-    expect "modules is JSON" jqt "$out" '.modules | length == 9'
+    expect "modules is JSON" jqt "$out" '.modules | length == 10'
+    expect "an odd folder name is listed whole and not scanned" jqt "$out" '.modules[] | select(.id == "odd \"id") | .files == 0'
+    nconf=5
+    if [ -e "$R/has-whiteout" ]; then
+        nconf=6
+        expect "a whiteout against the files other modules put there" jqt "$out" \
+            '[.conflicts[] | select(.kind == "remove")] | length == 1 and .[0].path == "/system/etc/hosts" and .[0].by == "debloat" and .[0].modules == ["hosts_a","hosts_b"]'
+    fi
     expect "a disabled module is listed but not scanned" jqt "$out" '.modules[] | select(.id == "off") | .enabled == false and .files == 0'
     expect "skip_mount: no files, props still count" jqt "$out" '.modules[] | select(.id == "nomount") | .mount == false and .files == 0 and .props == 1'
     expect "WebUI, Action and boot scripts" jqt "$out" '.modules[] | select(.id == "ui") | .webui and .action and .scripts == ["service.sh"]'
@@ -220,23 +298,37 @@ for SHN in $SHELLS; do
     expect "a replaced folder hides another module's files" jqt "$out" \
         '[.conflicts[] | select(.kind == "replace")] | length == 1 and .[0].path == "/system/app/Foo" and .[0].by == "debloat" and .[0].modules == ["addon"]'
     expect "same property, different values" jqt "$out" \
-        '[.conflicts[] | select(.kind == "prop")] | length == 1 and .[0].key == "ro.demo.x" and (.[0].values | length) == 3'
+        '[.conflicts[] | select(.kind == "prop" and .key == "ro.demo.x")] | length == 1 and (.[0].values | length) == 3'
+    expect "spaces around a property's name do not hide it" jqt "$out" \
+        '[.conflicts[] | select(.kind == "prop" and .key == "ro.trim.me")] | length == 1 and ([.[0].values[].value] | sort == ["1","2"])'
     expect "disabled and unmounted modules are not file conflicts" jqt "$out" \
         '[.conflicts[] | select(.kind == "file") | .modules[]] | (index("off") == null and index("nomount") == null)'
-    expect "four conflicts in all" jqt "$out" '.conflicts | length == 4'
+    expect "four conflicts in all" jqt "$out" ".conflicts | length == $nconf"
     expect "the system/vendor link KernelSU leaves is not a shared file" jqt "$out" \
         '([.conflicts[] | select(.kind == "file") | .paths[]] | index("/system/vendor") == null) and ([.modules[] | select(.id == "addon")][0].files == 2)'
     expect "module.prop without a last newline" jqt "$out" '.modules[] | select(.id == "ui") | .author == "tester"'
     expect "scan files cleaned up" test ! -d "$WORK/run/scan"
+    expect "the per-process scan folder too" sh -c '! ls "$1" | grep -q "^scan"' _ "$WORK/run"
+    # A scan that was killed left its folder: the next one removes it, and two at once do not mix.
+    sh -c : &
+    dead=$!
+    wait $dead
+    mkdir -p "$WORK/run/scan.$dead" "$WORK/run/scan"
+    fbs modules > "$WORK/m1.json" &
+    m1=$!
+    out=$(fbs modules)
+    wait $m1
+    expect "two scans at once give the same answer" test "$out" = "$(cat "$WORK/m1.json")"
+    expect "a dead scan's folder is removed" sh -c '! ls "$1" | grep -q "^scan"' _ "$WORK/run"
     out=$(fbs report)
-    expect "report counts conflicts" sh -c 'printf "%s" "$1" | grep -q "^Conflicts  *4 between modules$"' _ "$out"
+    expect "report counts conflicts" sh -c 'printf "%s" "$1" | grep -q "^Conflicts  *$2 between modules$"' _ "$out" "$nconf"
 
     # ---- facts for the Windows app
     out=$(fbs facts)
     expect "facts: kernel first" sh -c 'printf "%s\n" "$1" | head -n 1 | grep -qx "kernel=5.15.148-android13-8-00017-gabc123"' _ "$out"
     expect "facts: companion version and channel" sh -c 'printf "%s\n" "$1" | grep -qx "companion=[0-9.]* \(beta\|stable\)"' _ "$out"
     expect "facts: root, AVB from the bootloader, spoofing" sh -c 'printf "%s\n" "$1" | grep -qx "root=KernelSU" && printf "%s\n" "$1" | grep -qx "avb=orange" && printf "%s\n" "$1" | grep -qx "spoofed=true"' _ "$out"
-    expect "facts: conflicts counted" sh -c 'printf "%s\n" "$1" | grep -qx "conflicts=4"' _ "$out"
+    expect "facts: conflicts counted" sh -c 'printf "%s\n" "$1" | grep -qx "conflicts=$2"' _ "$out" "$nconf"
     expect "facts: every line is key=value" sh -c '! printf "%s\n" "$1" | grep -qv "^[a-z_]*="' _ "$out"
 
     # ---- what Fastboot Studio's Phone page reads (PhoneReport.cs): it runs "fbs info", a line
@@ -300,6 +392,15 @@ for SHN in $SHELLS; do
     out=$(fbs info)
     expect "without root or bootloader words, the properties decide" jqt "$out" '.boot.device_state == "locked" and .boot.locked == true and .boot.spoofed == false'
     mv "$R/ksud.keep" "$R/data/adb/ksud"
+    # relocked with the owner's AVB key: the bootloader says locked and yellow, and root is there
+    printf 'androidboot.verifiedbootstate = "yellow"\nandroidboot.vbmeta.device_state = "locked"\n' > "$R/proc/bootconfig"
+    out=$(fbs info)
+    expect "root does not overrule a bootloader that says locked" jqt "$out" '.boot.device_state == "locked" and .boot.locked == true and .boot.vbstate == "yellow" and .root == "KernelSU"'
+    # locked and green with root cannot be: the bootloader's words were rewritten as well
+    printf 'androidboot.verifiedbootstate = "green"\nandroidboot.vbmeta.device_state = "locked"\n' > "$R/proc/bootconfig"
+    out=$(fbs info)
+    expect "locked and green with root is called changed" jqt "$out" '.boot.device_state == "unlocked" and .boot.spoofed == true'
+    rm -f "$R/proc/bootconfig"
     mv "$R/bootconfig.keep" "$R/proc/bootconfig"
     mv "$R/cmdline.keep" "$R/proc/cmdline"
     mv "$R/props.keep" "$R/props"
