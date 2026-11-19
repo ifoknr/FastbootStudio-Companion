@@ -52,6 +52,7 @@ for SHN in $SHELLS; do
     expect "KMI from the kernel release" jqt "$out" '.kmi == "5.15-android13"'
     expect "AVB state from bootconfig, not the spoofed prop" jqt "$out" '.boot.vbstate == "orange" and .boot.spoofed == true'
     expect "device state from bootconfig" jqt "$out" '.boot.device_state == "unlocked" and .boot.locked == false'
+    expect "unlocked with root: nothing to point out" jqt "$out" '.boot.bootloader_word == "unlocked" and .boot.root_contradicts == false'
     expect "slot, dynamic, treble" jqt "$out" '.slot == "_a" and .dynamic == true and .treble == true and .vndk == "34"'
     expect "MediaTek and KernelSU" jqt "$out" '.soc == "mediatek" and .root == "KernelSU"'
     expect "battery health 4550000/5000000" jqt "$out" '.battery.health == 91 and .battery.cycles == 312 and .battery.temp_dc == 334'
@@ -396,10 +397,15 @@ for SHN in $SHELLS; do
     printf 'androidboot.verifiedbootstate = "yellow"\nandroidboot.vbmeta.device_state = "locked"\n' > "$R/proc/bootconfig"
     out=$(fbs info)
     expect "root does not overrule a bootloader that says locked" jqt "$out" '.boot.device_state == "locked" and .boot.locked == true and .boot.vbstate == "yellow" and .root == "KernelSU"'
-    # locked and green with root cannot be: the bootloader's words were rewritten as well
+    expect "locked beside root is pointed out" jqt "$out" '.boot.bootloader_word == "locked" and .boot.root_contradicts == true'
+    # locked and green with root do not go together, but the bootloader's word is still kept
     printf 'androidboot.verifiedbootstate = "green"\nandroidboot.vbmeta.device_state = "locked"\n' > "$R/proc/bootconfig"
     out=$(fbs info)
-    expect "locked and green with root is called changed" jqt "$out" '.boot.device_state == "unlocked" and .boot.spoofed == true'
+    expect "locked and green with root stays locked, and is pointed out" jqt "$out" \
+        '.boot.device_state == "locked" and .boot.locked == true and .boot.vbstate == "green" and .boot.root_contradicts == true'
+    expect "report says so" sh -c 'printf "%s\n" "$1" | grep -q "the bootloader reports locked, yet root is present"' _ "$(fbs report)"
+    out=$(fbs facts)
+    expect "facts: the new keys come after the old ones" sh -c 'printf "%s\n" "$1" | grep -qx "root_contradicts=true" && printf "%s\n" "$1" | grep -qx "bootloader_word=locked" && printf "%s\n" "$1" | grep -qx "device_state=locked" && test "$(printf "%s\n" "$1" | sed -n 13p | cut -d= -f1)" = conflicts' _ "$out"
     rm -f "$R/proc/bootconfig"
     mv "$R/bootconfig.keep" "$R/proc/bootconfig"
     mv "$R/cmdline.keep" "$R/proc/cmdline"

@@ -113,14 +113,23 @@ boot_state() {
     [ -n "$I_DEVSTATE" ] || I_DEVSTATE=$_pstate
     # Root alone does not overrule the bootloader's own word: a phone relocked with its
     # owner's AVB key starts a rooted image and is locked (its state is yellow). Root does
-    # decide when the bootloader said nothing, or said "locked" with green, which no rooted
-    # phone can be: then the command line was rewritten too.
-    if [ "$I_ROOT" != unknown ] && [ "$I_DEVSTATE" != unlocked ] &&
-        { [ -z "$_bl" ] || [ "$(bootarg verifiedbootstate)" = green ]; }; then
+    # decide when the bootloader said nothing: then the properties are all there is, and
+    # they are what hiding modules rewrite.
+    if [ "$I_ROOT" != unknown ] && [ "$I_DEVSTATE" != unlocked ] && [ -z "$_bl" ]; then
         I_DEVSTATE=unlocked
         # Root on a phone the bootloader or the properties call locked: they were changed.
         [ "$I_VBSTATE" != green ] || I_VBSTATE=orange
-        [ -z "$_bl" ] || I_VB_SPOOFED=true
+    fi
+    # The bootloader's word is kept as it is, even "locked" and green beside root, which
+    # do not go together unless that word was rewritten as well (some kernels do). It is
+    # not overruled, only pointed out: I_BL_WORD is what the bootloader said (empty when it
+    # said nothing) and I_ROOT_ODD is true when root is there and it said locked or green.
+    I_BL_WORD=$_bl
+    I_ROOT_ODD=false
+    if [ "$I_ROOT" != unknown ]; then
+        if [ "$_bl" = locked ] || [ "$(bootarg verifiedbootstate)" = green ]; then
+            I_ROOT_ODD=true
+        fi
     fi
     if [ "$I_DEVSTATE" = unlocked ] && [ "$_pstate" = locked ]; then
         I_VB_SPOOFED=true
@@ -202,8 +211,8 @@ info_json() {
     printf '"platform":%s,"soc":%s,"arch":%s,"slot":%s,"dynamic":%s,"treble":%s,"vndk":%s,' \
         "$(js "$I_PLATFORM")" "$(js "$I_SOC")" "$(js "$I_ARCH")" "$(js "$I_SLOT")" \
         "$(jb "$I_DYNAMIC")" "$(jb "$I_TREBLE")" "$(js "$I_VNDK")"
-    printf '"boot":{"vbstate":%s,"device_state":%s,"locked":%s,"spoofed":%s},' \
-        "$(js "$I_VBSTATE")" "$(js "$I_DEVSTATE")" "$(jb "$I_LOCKED")" "$I_VB_SPOOFED"
+    printf '"boot":{"vbstate":%s,"device_state":%s,"locked":%s,"spoofed":%s,"bootloader_word":%s,"root_contradicts":%s},' \
+        "$(js "$I_VBSTATE")" "$(js "$I_DEVSTATE")" "$(jb "$I_LOCKED")" "$I_VB_SPOOFED" "$(js "$I_BL_WORD")" "$I_ROOT_ODD"
     printf '"kernel":%s,"kmi":%s,"selinux":%s,"root":%s,"root_also":%s,"boot_reason":%s,' \
         "$(js "$I_KERNEL")" "$(js "$I_KMI")" "$(js "$I_SELINUX")" "$(js "$I_ROOT")" "$(js "$I_ROOT_ALSO")" "$(js "$I_REASON")"
     printf '"battery":{"level":%s,"health":%s,"cycles":%s,"temp_dc":%s},' \
@@ -222,7 +231,8 @@ facts_text() {
     _vpatch=$(prop ro.vendor.build.security_patch)
     for _kv in "kernel=$I_KERNEL" "patch=$I_PATCH" "vendor_patch=$_vpatch" "model=$I_MODEL" "android=$I_ANDROID" \
         "companion=$FBS_VERSION $FBS_CHANNEL" "root=$I_ROOT" "avb=$I_VBSTATE" "device_state=$I_DEVSTATE" \
-        "spoofed=$I_VB_SPOOFED" "selinux=$I_SELINUX" "kmi=$I_KMI" "conflicts=$((_c + 0))"; do
+        "spoofed=$I_VB_SPOOFED" "selinux=$I_SELINUX" "kmi=$I_KMI" "conflicts=$((_c + 0))" \
+        "root_also=$I_ROOT_ALSO" "bootloader_word=$I_BL_WORD" "root_contradicts=$I_ROOT_ODD"; do
         printf '%s\n' "$_kv" | tr -d '\r\t'
     done
 }
@@ -247,6 +257,7 @@ report_text() {
     echo "Android     $I_ANDROID (SDK $I_SDK) · patch $I_PATCH"
     echo "Slot        ${I_SLOT:-none}$_ab$_dyn"
     echo "Boot        AVB ${_vb:-unknown} · ${I_DEVSTATE:-unknown}"
+    [ "$I_ROOT_ODD" = true ] && echo "            the bootloader reports ${I_BL_WORD:-green}, yet root is present"
     echo "Kernel      $I_KERNEL"
     [ -n "$I_KMI" ] && echo "KMI         $I_KMI"
     echo "SELinux     $I_SELINUX"
