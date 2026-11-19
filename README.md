@@ -61,15 +61,17 @@ install it from your root manager. Updates arrive in the root manager after that
 
 | Tab | |
 |---|---|
-| 📱 **Device** | Bootloader and AVB state as the bootloader reported it, even when a hiding module rewrote `ro.boot.verifiedbootstate` · kernel, KMI and security patch · battery health and eMMC/UFS wear · live CPU clocks, temperature and memory |
+| 📱 **Device** | Bootloader and AVB state as the bootloader reported it, even when a hiding module rewrote `ro.boot.verifiedbootstate` · kernel, KMI and security patch · battery health and eMMC/UFS wear · live CPU clocks, temperature and memory · a line when the bootloader says locked while root is present · the root manager that is running, and another one's leftover files · the details as text to copy |
 | 🧯 **Black box** | When the last restart was a crash, the previous boot's kernel log (pstore) with the panic lines picked out |
-| 🗂️ **Partitions** | Everything under `by-name` with sizes and a safety tag (critical, boot, never), plus a map of what is inside `super` |
-| 🧩 **Modules** | Every installed module, and where they get in each other's way: two modules putting the same system file in place, one replacing a whole folder another adds to, or the same property set to different values |
+| 🗂️ **Partitions** | Everything under `by-name` with sizes and a safety tag (critical, boot, never), plus a map of what is inside `super`. Whole disks that Android links under `by-name` are left out, and a link that may be one stays out of the backups |
+| 🧩 **Modules** | Every installed module, and where they get in each other's way: two modules putting the same system file in place, one replacing a whole folder another adds to, the same property set to different values, or one removing (whiteout) what another puts in place |
 | 📜 **Logs** | Live kernel log and logcat with search and filters. Tap an SELinux denial to get a ready `sepolicy.rule` line, or collect all of them at once |
-| 💾 **Backup** | Critical (IMEI, calibration, boot chain), boot (current slot) or full (everything but userdata), each with `SHA256SUMS` and `backup-info.txt`. Verify any backup on the phone |
+| 💾 **Backup** | Critical (IMEI, calibration, boot chain), boot (current slot) or full (everything but userdata), each with `SHA256SUMS` and `backup-info.txt`. An image counts only when it is as long as its partition, and every image is checked again after the backup. Free space is shown before you start; verify any backup on the phone; "How to restore" gives the steps (nothing is restored from the page) |
 | 🛠️ **Tools** | Restart to bootloader, fastbootd, recovery or EDL (Qualcomm), a support bundle with IMEI, serial and MAC addresses masked, the theme and the language |
 
 Arabic and English, following the phone's language; day and night, following the phone or your choice.
+The page carries its own fonts (Noto Kufi Arabic, Roboto and Roboto Mono, under the SIL Open Font
+License), so it looks the same on every ROM and like Fastboot Studio on Windows and Android.
 On a tablet the tabs move to a side rail and the cards spread out:
 
 <p align="center">
