@@ -132,6 +132,7 @@ The same links are in the WebUI, under the backups and in Tools.
 SHELLS="dash mksh busybox-sh" sh tests/run.sh   # fbs against a fake phone
 CHROME=google-chrome sh tests/webui-smoke.sh    # the WebUI with the demo bridge
 sh tools/build.sh                               # dist/FastbootStudio-Companion-vX.Y.Z.zip
+node tools/docs.js                              # the pictures in docs/ (needs Playwright)
 ```
 
 `module/webroot/index.html` also opens in a normal browser, where `demo.js` stands in for the
