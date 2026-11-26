@@ -1,0 +1,15 @@
+#!/bin/sh
+# tar for the fake phone: the real one, except when a test wants it to go wrong.
+#   FAKE_TAR_SHORT=1   an archive is written, but with one member only
+#   FAKE_TAR_NOGZ=1    no gzip built in: -czf fails, as on a small toolbox
+real=$(command -pv tar)
+case $1 in
+    -czf) [ -z "${FAKE_TAR_NOGZ:-}" ] || exit 1 ;;
+    -cf)
+        if [ -n "${FAKE_TAR_SHORT:-}" ]; then
+            "$real" -cf "$2" -C "$4" "$5/SHA256SUMS"
+            exit
+        fi
+        ;;
+esac
+"$real" "$@"

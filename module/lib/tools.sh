@@ -87,8 +87,66 @@ bundle_run() {
     if tar -czf "$_bdir.tar.gz" -C "$DATA/Reports" "$_bname" 2>/dev/null; then
         rm -rf "$_bdir"
         printf '{"ok":true,"file":%s,"redacted":%s}\n' "$(js "$_bdir.tar.gz")" "$_bred"
+    elif rm -f "$_bdir.tar.gz" && tar -cf "$_bdir.tar" -C "$DATA/Reports" "$_bname" 2>/dev/null; then
+        # A tar without gzip built in: still one file, only not compressed.
+        rm -rf "$_bdir"
+        printf '{"ok":true,"file":%s,"redacted":%s}\n' "$(js "$_bdir.tar")" "$_bred"
     else
+        rm -f "$_bdir.tar"
         rm -f "$_bdir.tar.gz"
         printf '{"ok":true,"file":%s,"redacted":%s}\n' "$(js "$_bdir")" "$_bred"
+    fi
+}
+
+# fbs share <file>: opens Android's share sheet for an archive or a support bundle under <DATA>.
+#
+# A receiving app cannot read a file:// path under /sdcard on Android 11 and later (scoped
+# storage), so the file is handed over as the content:// address MediaStore has for it, with
+# read permission granted for that one address. MediaStore is told to index the file first.
+# When no such address can be had, or am refuses, the answer is {"ok":false,...} with the path:
+# the WebUI then shows where the file is, and never says it was shared. {"ok":true} means the
+# share sheet was asked for, not that anything was sent.
+share_run() {
+    _sf=$1
+    case $_sf in
+        "$DATA"/*) ;;
+        *)
+            echo '{"ok":false,"msg":"usage: fbs share <file under the FastbootStudio folder>"}'
+            return 2
+            ;;
+    esac
+    case $_sf in
+        */../* | */.. | *\'*)
+            echo '{"ok":false,"msg":"bad-path"}'
+            return 2
+            ;;
+    esac
+    if [ ! -f "$_sf" ]; then
+        echo '{"ok":false,"msg":"missing"}'
+        return 1
+    fi
+    # The path as MediaStore keeps it: /storage/emulated/0/..., not the /sdcard link.
+    _real=$(readlink -f "$_sf" 2>/dev/null)
+    case $_real in /storage/*) ;; *) _real=$_sf ;; esac
+    case $_real in /sdcard/*) _real=/storage/emulated/0/${_real#/sdcard/} ;; esac
+    case $_sf in
+        *.tar.gz | *.tgz) _mime=application/gzip ;;
+        *.tar) _mime=application/x-tar ;;
+        *) _mime=application/octet-stream ;;
+    esac
+    content call --uri content://media --method scan_file --arg "$_real" > /dev/null 2>&1
+    _id=$(content query --uri content://media/external/file --projection _id --where "_data='$_real'" 2>/dev/null |
+        sed -n 's/.*_id=\([0-9][0-9]*\).*/\1/p' | head -n 1)
+    if [ -z "$_id" ]; then
+        printf '{"ok":false,"msg":"no-uri","file":%s}\n' "$(js "$_sf")"
+        return 1
+    fi
+    _uri=content://media/external/file/$_id
+    if _o=$(am start -a android.intent.action.SEND -t "$_mime" --eu android.intent.extra.STREAM "$_uri" \
+        --grant-read-uri-permission 2>&1) && case $_o in *Error* | *Exception*) false ;; *) true ;; esac; then
+        printf '{"ok":true,"file":%s,"uri":%s}\n' "$(js "$_sf")" "$(js "$_uri")"
+    else
+        printf '{"ok":false,"msg":"am","file":%s}\n' "$(js "$_sf")"
+        return 1
     fi
 }

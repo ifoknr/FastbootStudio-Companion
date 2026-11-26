@@ -15,6 +15,13 @@ name=${out##*/}
 name=${name%.img}
 if [ "$(wc -c < "$src")" -eq 3 ]; then
     read -r sectors < "$FBS_ROOT/sys/class/block/${src##*/}/size"
+    # FAKE_DD_SLOW=<partition>: that copy takes a few seconds and grows on the way, so there
+    # is progress to report (and something to cut off).
+    if [ "${FAKE_DD_SLOW:-}" = "$name" ]; then
+        echo $$ > "$FBS_ROOT/dd.pid"
+        "$real" if=/dev/null of="$out" bs=512 seek="$((sectors / 2))" 2>/dev/null
+        sleep "${FAKE_DD_SECONDS:-3}"
+    fi
     "$real" if=/dev/null of="$out" bs=512 seek="$sectors" 2>/dev/null
     exit
 fi

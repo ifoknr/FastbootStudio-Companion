@@ -233,7 +233,9 @@ for SHN in $SHELLS; do
     printf 'x' >> "$dir/nvram.img"
     out=$(fbs verify "$name")
     expect "verify catches a changed image" jql "$out" \
-        '(.[] | select(.name == "nvram.img") | .state == "bad") and .[-1].bad == 1'
+        '(.[] | select(.event == "file" and .name == "nvram.img") | .state == "bad") and .[-1].bad == 1'
+    expect "verify says how much there is before it starts" jql "$out" \
+        '.[0].event == "plan" and .[0].count == 11 and (.[0].kb | type == "number") and ([.[] | select(.event == "start")] | length == 11)'
     # A list as Windows writes it (CR LF, no last newline) still checks; an empty one does not pass.
     cp "$dir/SHA256SUMS" "$WORK/sums.keep"
     head -c -1 "$dir/nvram.img" > "$WORK/nvram.tmp" && cat "$WORK/nvram.tmp" > "$dir/nvram.img"
@@ -268,6 +270,106 @@ for SHN in $SHELLS; do
     expect "a renamed backup keeps its name" jqt "$out" '.items | length == 3 and ([.[].name] | index("before flash_old phone") != null)'
     out=$(fbs delete "before flash_old phone")
     expect "a renamed backup can be deleted" jqt "$out" '.ok == true'
+
+    # ---- backup: a set picked by hand
+    sleep 1
+    out=$(fbs backup custom nvram boot_a nvram)
+    expect "custom copies the partitions named, each once" jql "$out" \
+        '.[0].count == 2 and ([.[] | select(.event == "done") | .name] | sort == ["boot_a","nvram"]) and .[-1].saved == 2'
+    cdir=$WORK/data/Backups/$(printf '%s\n' "$out" | jq -r 'select(.event == "finish") | .folder')
+    cname=${cdir##*/}
+    expect "custom is named in backup-info" grep -q "^set	custom$" "$cdir/backup-info.txt"
+    expect "custom images match the partitions" cmp "$cdir/boot_a.img" "$R/dev/block/mmcblk0p10"
+    out=$(fbs backup custom nvram userdata)
+    expect "userdata cannot be picked" jqt "$out" '.event == "error" and .msg == "bad-name" and .name == "userdata"'
+    out=$(fbs backup custom mmcblk0p23)
+    expect "a link that may be a whole disk cannot be picked" jqt "$out" '.msg == "bad-name" and .name == "mmcblk0p23"'
+    out=$(fbs backup custom nvram nosuch)
+    expect "an unknown name stops the whole pick" jqt "$out" '.msg == "bad-name" and .name == "nosuch"'
+    rm -f "$R/reboot.log"
+    out=$(fbs backup custom 'nvram;reboot' '$(reboot)')
+    expect "a name is never run as a command" sh -c 'printf "%s\n" "$1" | jq -e ".msg == \"bad-name\"" >/dev/null && test ! -e "$2"' _ "$out" "$R/reboot.log"
+    out=$(fbs backup custom '../../etc')
+    expect "nor used as a path" jqt "$out" '.msg == "bad-name"'
+    out=$(fbs backup custom)
+    expect "custom needs a name" jqt "$out" '.event == "error"'
+    out=$(fbs backups)
+    expect "a refused pick leaves no folder" jqt "$out" '.items | length == 3'
+    expect "lock released after a refusal" test ! -e "$WORK/run/backup.pid"
+
+    # ---- backup: progress while a big partition copies, and a job that is cut off
+    sleep 1
+    out=$(FAKE_DD_SLOW=super FAKE_DD_SECONDS=3 fbs backup custom super)
+    expect "progress while a big partition copies" jql "$out" \
+        '[.[] | select(.event == "progress")] | length >= 1 and length <= 6 and all(.name == "super" and .of == "9663676416" and (.bytes | test("^[0-9]+$")))'
+    expect "progress shows a part, then the whole" jql "$out" \
+        '[.[] | select(.event == "progress") | .bytes] | index("4831838208") != null'
+    expect "the hash step is announced after the copy" jql "$out" \
+        '([.[].event] | index("hash")) > ([.[].event] | index("progress")) and .[-1].saved == 1'
+    rm -rf "$WORK/data/Backups/$(printf '%s\n' "$out" | jq -r 'select(.event == "finish") | .folder')"
+    sleep 1
+    out=$(fbs backup custom nvram)
+    expect "a small partition reports no progress" jql "$out" '[.[] | select(.event == "progress")] | length == 0'
+    rm -rf "$WORK/data/Backups/$(printf '%s\n' "$out" | jq -r 'select(.event == "finish") | .folder')"
+    rm -f "$R/dd.pid"
+    # shellcheck disable=SC2086
+    FAKE_DD_SLOW=super FAKE_DD_SECONDS=30 FBS_ROOT=$R FBS_DATA=$WORK/data FBS_RUN=$WORK/run PATH="$HERE/shims:$PATH" \
+        $SH "$ROOT/module/bin/fbs" backup custom super > "$WORK/cancel.out" &
+    job=$!
+    sleep 2
+    kill $job
+    wait $job 2>/dev/null
+    expect "the cut-off job had started copying" test -s "$R/dd.pid"
+    expect "a cut-off backup leaves no folder behind" sh -c '! ls -a "$1" | grep -q "^\.partial-"' _ "$WORK/data/Backups"
+    expect "a cut-off backup releases the lock" test ! -e "$WORK/run/backup.pid"
+    expect "and no dd is left running" sh -c '! kill -0 "$(cat "$1")" 2>/dev/null' _ "$R/dd.pid"
+    out=$(fbs backups)
+    expect "still three backups" jqt "$out" '.items | length == 3'
+
+    # ---- archive: one .tar of a backup
+    out=$(fbs archive "$cname")
+    expect "archive: a plan, then the file" jql "$out" \
+        '.[0].event == "plan" and .[0].count == 4 and .[-1].event == "finish" and .[-1].files == 4 and (.[-1].file | endswith(".tar"))'
+    expect "archive holds the images, the sums and the info" sh -c 'test "$(tar -tf "$1" | grep -c "nvram.img$\|boot_a.img$\|SHA256SUMS$\|backup-info.txt$")" -eq 4' _ "$cdir.tar"
+    expect "an unpacked archive checks" sh -c 'mkdir -p "$2" && tar -xf "$1" -C "$2" && cd "$2"/*/ && sha256sum -c --quiet SHA256SUMS' _ "$cdir.tar" "$WORK/un"
+    rm -rf "$WORK/un"
+    out=$(fbs backups)
+    expect "the archive is noted on its backup, not listed as one" jqt "$out" \
+        '(.items | length == 3) and ([.items[] | select(.tar == true)] | length == 1 and .[0].name == "'"$cname"'")'
+    rm -f "$cdir.tar"
+    out=$(FAKE_DF_AVAIL=1000 fbs archive "$cname")
+    expect "archive checks the space first" jqt "$out" '.event == "error" and .msg == "space"'
+    out=$(FAKE_TAR_SHORT=1 fbs archive "$cname")
+    expect "an archive with members missing is refused" jql "$out" '.[-1].event == "error" and .[-1].msg == "count" and .[-1].got == 1 and .[-1].want == 4'
+    expect "and removed" sh -c 'test ! -e "$1.tar" && ! ls -a "$2" | grep -q "partial"' _ "$cdir" "$WORK/data/Backups"
+    out=$(fbs archive ../etc)
+    expect "archive stays inside Backups" jqt "$out" '.event == "error"'
+    out=$(fbs archive no-such-backup)
+    expect "archive reports a missing backup" jqt "$out" '.msg == "missing"'
+
+    # ---- share: only through an address a receiving app can read
+    fbs archive "$cname" > /dev/null
+    rm -f "$R/am.log" "$R/content.log" "$R/use-content"
+    out=$(fbs share "$cdir.tar")
+    expect "no content address: not shared, and the path is given" jqt "$out" '.ok == false and .msg == "no-uri" and (.file | endswith(".tar"))'
+    expect "and the share sheet was not asked for" test ! -e "$R/am.log"
+    : > "$R/use-content"
+    out=$(fbs share "$cdir.tar")
+    expect "share hands over the content address" jqt "$out" '.ok == true and .uri == "content://media/external/file/4711"'
+    expect "with read permission and the type" grep -qx -- '-a android.intent.action.SEND -t application/x-tar --eu android.intent.extra.STREAM content://media/external/file/4711 --grant-read-uri-permission' "$R/am.log"
+    expect "MediaStore was asked about that file" grep -q "_data='$cdir.tar'" "$R/content.log"
+    out=$(fbs share /etc/passwd)
+    expect "share takes only files under the data folder" jqt "$out" '.ok == false'
+    out=$(fbs share "$WORK/data/Backups/../../phone/props")
+    expect "share refuses a path that climbs out" jqt "$out" '.ok == false and .msg == "bad-path"'
+    out=$(fbs share "$WORK/data/Backups/none.tar")
+    expect "share reports a missing file" jqt "$out" '.msg == "missing"'
+    expect "one share in all" test "$(wc -l < "$R/am.log")" -eq 1
+    rm -f "$R/use-content"
+    out=$(fbs delete "$cname")
+    expect "deleting a backup removes its archive too" sh -c 'test ! -e "$1" && test ! -e "$1.tar"' _ "$cdir"
+    out=$(fbs backups)
+    expect "two backups again" jqt "$out" '.items | length == 2'
 
     # ---- reboot
     rm -f "$R/reboot.log"
@@ -374,6 +476,9 @@ for SHN in $SHELLS; do
     expect "MAC masked" sh -c '! grep -rq "3c:84:6a:12:9e:01" "$1"' _ "$WORK/x"
     expect "device.json still JSON after masking" sh -c 'jq -e .model "$1"/*/device.json' _ "$WORK/x"
     rm -rf "$WORK/x"
+    sleep 1
+    out=$(FAKE_TAR_NOGZ=1 fbs bundle)
+    expect "bundle is one file even without gzip" sh -c 'f=$(printf "%s" "$1" | jq -r .file); case $f in *.tar) test -f "$f" && test ! -d "${f%.tar}" ;; *) exit 1 ;; esac' _ "$out"
 
     # ---- older bootloaders: only verifiedbootstate on the command line, properties set to locked
     mv "$R/proc/bootconfig" "$R/bootconfig.keep"

@@ -49,6 +49,10 @@ fbs $FBS_VERSION ($FBS_CHANNEL), Fastboot Studio Companion
   last [lines]             the previous boot's kernel log (pstore)
   backup critical|boot|full
                            copy partitions to $DATA/Backups (JSON lines)
+  backup custom <partition>...
+                           copy only the partitions named
+  archive <folder>         one .tar of a backup, next to its folder (JSON lines)
+  share <file>             open Android's share sheet for an archive or a bundle (JSON)
   backups                  the backups on the phone (JSON)
   modules                  installed modules and the conflicts between them (JSON)
   verify <folder>          re-check a backup against its SHA256SUMS (JSON lines)
@@ -76,6 +80,8 @@ case $cmd in
     modules) modules_json ;;
     verify) verify_run "$@" ;;
     delete) delete_run "$@" ;;
+    archive) archive_run "$@" ;;
+    share) share_run "$@" ;;
     reboot) reboot_to "$@" ;;
     bundle) bundle_run "$@" ;;
     open) open_url "$@" ;;

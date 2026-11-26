@@ -1,0 +1,7 @@
+#!/bin/sh
+# MediaStore for the fake phone: knows a file (id 4711) only when the test asks for it.
+echo "$@" >> "$FBS_ROOT/content.log"
+[ -e "$FBS_ROOT/use-content" ] || exit 1
+case $1 in
+    query) echo "Row: 0 _id=4711" ;;
+esac

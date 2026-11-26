@@ -11,13 +11,49 @@
 #
 # Long jobs print one JSON object per line so the WebUI can show progress as it goes.
 
+# Says how far a copy has come, about once a second, while process $1 writes file $2:
+#   {"event":"progress","name":<$3>,"bytes":"<size so far>","of":"<$4>"}
+# The numbers are text: a size past 4 GiB does not fit mksh's 32-bit arithmetic, and none is
+# done on them. dd's own progress (status=progress, a USR1 signal) differs between toybox,
+# busybox and GNU, so the file's size is read instead; a line goes out only when it changed.
+poll_copy() {
+    _pl=
+    while kill -0 "$1" 2>/dev/null; do
+        sleep 1
+        _pn=$(stat -c %s "$2" 2>/dev/null) || continue
+        [ "$_pn" = "$_pl" ] || printf '{"event":"progress","name":%s,"bytes":"%s","of":"%s"}\n' "$(js "$3")" "$_pn" "$4"
+        _pl=$_pn
+    done
+}
+
 # fbs backup critical|boot|full
+# fbs backup custom <partition> [<partition> ...]   the partitions named, and only those
 backup_run() {
     _set=$1
+    [ $# -gt 0 ] && shift
     case $_set in
         critical | boot | full) ;;
+        custom)
+            # The names are only ever compared with the ones part_list gives (below): none
+            # is used to build a path or a command. One with an odd character cannot match
+            # anyway, and is refused here with its own message.
+            _want=
+            for _n in "$@"; do
+                case $_n in
+                    '' | *[!A-Za-z0-9._+-]*)
+                        printf '{"event":"error","msg":"bad-name","name":%s}\n' "$(js "$_n")"
+                        return 2
+                        ;;
+                esac
+                case " $_want " in *" $_n "*) ;; *) _want="$_want $_n" ;; esac
+            done
+            if [ -z "$_want" ]; then
+                echo '{"event":"error","msg":"nothing"}'
+                return 2
+            fi
+            ;;
         *)
-            echo '{"event":"error","msg":"usage: fbs backup critical|boot|full"}'
+            echo '{"event":"error","msg":"usage: fbs backup critical|boot|full | custom <partition>..."}'
             return 2
             ;;
     esac
@@ -31,7 +67,9 @@ backup_run() {
     # _partial is the folder being written; it goes too when the job is cut off (bin/fbs turns
     # a signal into an exit), so a half-written backup is not left for the next run to find.
     _partial=
-    trap 'rm -f "$RUN/backup.pid"; [ -z "$_partial" ] || rm -rf "$_partial"' EXIT
+    # JOB is the dd that is copying in the background, if one is: it must not outlive fbs.
+    JOB=
+    trap '[ -z "$JOB" ] || kill "$JOB" 2>/dev/null; rm -f "$RUN/backup.pid"; [ -z "$_partial" ] || rm -rf "$_partial"' EXIT
 
     _slot=$(current_slot)
     _plan=
@@ -60,6 +98,9 @@ backup_run() {
         case $_set:$CAT in
             *:never) continue ;;
             critical:critical | full:*) ;;
+            custom:*)
+                case " $_want " in *" $_n "*) ;; *) continue ;; esac
+                ;;
             boot:boot)
                 # The current slot only; unslotted boot partitions are kept.
                 case $_n in
@@ -76,6 +117,20 @@ backup_run() {
         _plan="$_plan $_n:$_d"
     done
 
+    # Every name asked for has to be in the plan: one that is not is unknown, userdata, a
+    # link that may be a whole disk, or has no size. Nothing is copied then, rather than
+    # a backup that silently lacks what was asked for.
+    if [ "$_set" = custom ]; then
+        for _n in $_want; do
+            case " $_plan " in
+                *" $_n:"*) ;;
+                *)
+                    printf '{"event":"error","msg":"bad-name","name":%s}\n' "$(js "$_n")"
+                    return 1
+                    ;;
+            esac
+        done
+    fi
     if [ $_count = 0 ]; then
         echo '{"event":"error","msg":"nothing"}'
         return 1
@@ -121,11 +176,29 @@ backup_run() {
         # its hash could be taken: a short copy must not pass for a backup.
         _bytes=
         _h=
-        if _err=$(dd if="$R/dev/block/$_d" of="$_out/$_n.img" bs=4194304 2>&1); then
+        # A big partition (32 MiB and up) is copied in the background so its progress can be
+        # reported; a small one is done before a second is over and is copied as before.
+        if [ "$REPLY" -ge 65536 ]; then
+            dd if="$R/dev/block/$_d" of="$_out/$_n.img" bs=4194304 2> "$_out/.dd-err" &
+            JOB=$!
+            poll_copy "$JOB" "$_out/$_n.img" "$_n" "$BYTES"
+            wait "$JOB"
+            _rc=$?
+            JOB=
+            _err=$(cat "$_out/.dd-err" 2>/dev/null)
+            rm -f "$_out/.dd-err"
+        else
+            _err=$(dd if="$R/dev/block/$_d" of="$_out/$_n.img" bs=4194304 2>&1)
+            _rc=$?
+        fi
+        if [ "$_rc" = 0 ]; then
             _bytes=$(stat -c %s "$_out/$_n.img" 2>/dev/null)
             if [ "$_bytes" != "$BYTES" ]; then
                 _err="size: $_bytes of $BYTES bytes"
             else
+                # Reading a big image back for its hash takes a while too: said, so the
+                # WebUI can show it as its own step.
+                printf '{"event":"hash","name":%s}\n' "$(js "$_n")"
                 _h=$(cd "$_out" && sha256sum "$_n.img")
                 _h=${_h%% *}
                 case $_h in
@@ -194,8 +267,9 @@ backups_json() {
         [ -r "$DATA/Backups/$_n/SHA256SUMS" ] && _files=$(wc -l < "$DATA/Backups/$_n/SHA256SUMS")
         _kb=$(du -sk "$DATA/Backups/$_n" 2>/dev/null | { read -r _s _; echo "$_s"; })
         num "$_kb"
-        printf '%s{"name":%s,"files":%s,"kb":%s,"sums":%s}' "$_sep" "$(js "$_n")" "$((_files + 0))" "$N" \
-            "$([ -r "$DATA/Backups/$_n/SHA256SUMS" ] && echo true || echo false)"
+        printf '%s{"name":%s,"files":%s,"kb":%s,"sums":%s,"tar":%s}' "$_sep" "$(js "$_n")" "$((_files + 0))" "$N" \
+            "$([ -r "$DATA/Backups/$_n/SHA256SUMS" ] && echo true || echo false)" \
+            "$([ -f "$DATA/Backups/$_n.tar" ] && echo true || echo false)"
         _sep=,
     done
     printf ']}\n'
@@ -216,6 +290,8 @@ delete_run() {
         return 1
     fi
     if rm -rf "$_out"; then
+        # The archive made from it (fbs archive) is a copy of the same files: it goes too.
+        rm -f "$_out.tar"
         printf '{"ok":true,"folder":%s}\n' "$(js "$1")"
     else
         echo '{"ok":false,"msg":"storage"}'
@@ -241,10 +317,28 @@ verify_run() {
     # A list written on Windows may end its lines with CR LF, and any list may lack the last
     # newline: both still count.
     _cr=$(printf '\r')
+    # First how much there is to read (KiB on disk: du, because a size in bytes past 4 GiB
+    # cannot be added up under mksh), so the WebUI can show how far the check has come.
+    _vc=0
+    _vk=0
     while read -r _want _file || [ -n "$_want" ]; do
         _file=${_file%"$_cr"}
         _file=${_file#\*}
         [ -n "$_file" ] || continue
+        _vc=$((_vc + 1))
+        _k=$(du -k "$_out/$_file" 2>/dev/null | { read -r _s _; echo "$_s"; })
+        num "$_k"
+        [ "$N" = null ] || _vk=$((_vk + N))
+    done < "$_out/SHA256SUMS"
+    printf '{"event":"plan","count":%s,"kb":%s}\n' "$_vc" "$_vk"
+    while read -r _want _file || [ -n "$_want" ]; do
+        _file=${_file%"$_cr"}
+        _file=${_file#\*}
+        [ -n "$_file" ] || continue
+        _k=$(du -k "$_out/$_file" 2>/dev/null | { read -r _s _; echo "$_s"; })
+        num "$_k"
+        [ "$N" = null ] && N=0
+        printf '{"event":"start","name":%s,"kb":%s}\n' "$(js "$_file")" "$N"
         if [ ! -r "$_out/$_file" ]; then
             _state=missing
         else
@@ -260,4 +354,72 @@ verify_run() {
         return 1
     fi
     printf '{"event":"finish","ok":%s,"bad":%s}\n' "$_ok" "$_bad"
+}
+
+# fbs archive <folder name>: one .tar of a finished backup, next to its folder, for sending
+# it somewhere as a single file. Plain tar, not compressed: the images do not shrink, and
+# every tar reads it. Written under a hidden name and renamed once its list of members has
+# been read back and counted, so a cut-off archive never looks like a whole one.
+archive_run() {
+    case $1 in
+        '' | */* | .*)
+            echo '{"event":"error","msg":"usage: fbs archive <folder name>"}'
+            return 2
+            ;;
+    esac
+    _adir=$DATA/Backups/$1
+    if [ ! -d "$_adir" ]; then
+        echo '{"event":"error","msg":"missing"}'
+        return 1
+    fi
+    _atar=$_adir.tar
+    _akb=$(du -sk "$_adir" 2>/dev/null | { read -r _s _; echo "$_s"; })
+    num "$_akb"
+    _akb=$N
+    [ "$_akb" != null ] || _akb=0
+    free_kb "$DATA/Backups"
+    # 16 MiB over the folder's size: tar's headers and padding, and a little spare.
+    if [ "$N" != null ] && [ $((_akb + 16384)) -gt "$N" ]; then
+        printf '{"event":"error","msg":"space","need_kb":%s,"free_kb":%s}\n' "$((_akb + 16384))" "$N"
+        return 1
+    fi
+    _afiles=$(find "$_adir" -type f | wc -l)
+    _afiles=$((_afiles + 0))
+    _partial=$DATA/Backups/.partial-$1.tar
+    JOB=
+    trap '[ -z "$JOB" ] || kill "$JOB" 2>/dev/null; [ -z "$_partial" ] || rm -f "$_partial"' EXIT
+    rm -f "$_partial"
+    printf '{"event":"plan","file":%s,"count":%s,"kb":%s}\n' "$(js "$_atar")" "$_afiles" "$_akb"
+    # "./" before the name: a folder whose name starts with a dash is not read as an option.
+    tar -cf "$_partial" -C "$DATA/Backups" "./$1" 2>/dev/null &
+    JOB=$!
+    poll_copy "$JOB" "$_partial" "$1" ""
+    wait "$JOB"
+    _rc=$?
+    JOB=
+    if [ "$_rc" != 0 ]; then
+        rm -f "$_partial"
+        _partial=
+        echo '{"event":"error","msg":"tar"}'
+        return 1
+    fi
+    # Read the list back: as many files in the archive as in the folder.
+    _got=$(tar -tf "$_partial" 2>/dev/null | grep -c -v '/$')
+    if [ "$((_got + 0))" != "$_afiles" ] || [ "$_afiles" = 0 ]; then
+        rm -f "$_partial"
+        _partial=
+        printf '{"event":"error","msg":"count","got":%s,"want":%s}\n' "$((_got + 0))" "$_afiles"
+        return 1
+    fi
+    sync
+    mv "$_partial" "$_atar" || {
+        rm -f "$_partial"
+        _partial=
+        echo '{"event":"error","msg":"storage"}'
+        return 1
+    }
+    _partial=
+    _k=$(du -k "$_atar" 2>/dev/null | { read -r _s _; echo "$_s"; })
+    num "$_k"
+    printf '{"event":"finish","file":%s,"files":%s,"kb":%s}\n' "$(js "$_atar")" "$_afiles" "$N"
 }
