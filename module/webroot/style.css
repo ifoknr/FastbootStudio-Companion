@@ -572,6 +572,36 @@ pre.code { padding: .5rem .625rem; border-radius: var(--r-in); font-size: .75rem
 .bitem .p { font-size: .75rem; line-height: 1.125rem; }
 .bitem .m { font-size: .75rem; line-height: 1.125rem; }
 [lang="ar"] .bitem .m { line-height: 1.25rem; }
+/* A backup's row: its name, what is known about it, a thin bar while a check or an archive
+   runs, then its three actions side by side. */
+.bitem { display: flex; flex-direction: column; align-items: stretch; }
+.bitem .meter { margin: .25rem 0 0; }
+.bacts { display: flex; gap: .375rem; margin-top: .375rem; }
+.bacts .btn-s { flex: 1 1 0; min-width: 0; padding-left: .5rem; padding-right: .5rem; }
+/* The copy in hand: a bar of its own under the row, gone when the image is done. */
+.prow .meter { display: none; grid-column: 1 / -1; margin: .125rem 0 .25rem; }
+.prow.run .meter { display: block; }
+.prow.hash .meter i { background: var(--info); opacity: .6; }
+#progEta { margin: -.25rem 0 .375rem; font-variant-numeric: tabular-nums; min-height: 1.25rem; }
+/* The partitions to pick from: a list that scrolls inside its card. */
+.clist { display: flex; flex-direction: column; max-height: 15rem; overflow-y: auto; margin: .5rem -.25rem 0; }
+.crow { display: flex; align-items: center; gap: .5rem; min-height: 2.25rem; padding: .125rem .25rem; border-radius: var(--r-in); cursor: pointer; position: relative; }
+.crow::after { content: ""; position: absolute; top: -.375rem; bottom: -.375rem; left: 0; right: 0; }
+.crow { flex: none; }
+.crow + .crow { border-top: 1px solid var(--line); }
+/* A word in the status column ("hashing…") reads in the page's direction; sizes stay ltr. */
+.prow .st.txt { direction: inherit; }
+.crow input { width: 1.125rem; height: 1.125rem; margin: 0; flex: none; accent-color: var(--accent); }
+.crow .cn { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; }
+.crow .pn { font-family: var(--mono); font-size: .8125rem; line-height: 1.125rem; direction: ltr; unicode-bidi: isolate; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+[dir="rtl"] .crow .pn { text-align: right; }
+.crow small { font-size: .75rem; line-height: 1rem; color: var(--faint); }
+[lang="ar"] .crow small { line-height: 1.25rem; }
+.crow .ps { font-size: .8125rem; color: var(--dim); direction: ltr; white-space: nowrap; font-variant-numeric: tabular-nums; min-width: 4rem; text-align: right; }
+[dir="rtl"] .crow .ps { text-align: left; }
+.crow.off { cursor: not-allowed; }
+.crow.off .pn, .crow.off .ps { color: var(--faint); }
+#customCard .filters { margin-top: .5rem; }
 .links { gap: .375rem; margin-top: .5rem; }
 .lbtn { gap: .625rem; padding: .375rem .625rem; min-height: 3rem; border-radius: var(--r-in); border-color: var(--edge); background: transparent; }
 .lbtn svg { width: 1.25rem; height: 1.25rem; stroke-width: 1.75; }

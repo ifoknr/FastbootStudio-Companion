@@ -85,8 +85,8 @@
   setInterval(grow, 900);
 
   const backups = [
-    { name: 'Demo_Phone_DEMO0123456789_20260921-184012', files: 11, kb: 352256, sums: true },
-    { name: 'Demo_Phone_DEMO0123456789_20260830-091233', files: 4, kb: 114688, sums: true },
+    { name: 'Demo_Phone_DEMO0123456789_20260921-184012', files: 11, kb: 352256, sums: true, tar: false },
+    { name: 'Demo_Phone_DEMO0123456789_20260830-091233', files: 4, kb: 114688, sums: true, tar: false },
   ];
 
   const last = `#reason=kernel_panic
@@ -122,6 +122,8 @@
       case 'bundle': return JSON.stringify({ ok: true, file: '/sdcard/FastbootStudio/Reports/companion-report_20261009-211407.tar.gz', redacted: a1 !== 'plain' });
       case 'reboot': return JSON.stringify({ ok: true });
       case 'open': return JSON.stringify({ ok: true });
+      // As on a phone where MediaStore gives no address for the file: not shared, path given.
+      case 'share': return JSON.stringify(query.get('share') === 'ok' ? { ok: true, file: a1, uri: 'content://media/external/file/4711' } : { ok: false, msg: 'no-uri', file: a1 });
       case 'modules': return JSON.stringify(modules);
       case 'delete': {
         const i = backups.findIndex(x => x.name === a1);
@@ -133,27 +135,56 @@
     }
   }
 
+  // ?slow=1 gives each step of a long job a second or so, so a state can be looked at (and
+  // photographed) while it lasts; ?share=ok makes the share sheet "open".
+  const query = new URLSearchParams(location.search);
+  const slow = query.get('slow') ? 6 : 1;
+
   function events(args) {
     // Anything else is what a shell would make of arguments that were not quoted: no job.
-    if (args[0] !== 'verify' && !(args[0] === 'backup' && ['critical', 'boot', 'full'].includes(args[1]))) return null;
+    if (!['verify', 'archive'].includes(args[0]) && !(args[0] === 'backup' && ['critical', 'boot', 'full', 'custom'].includes(args[1]))) return null;
     if (args[0] === 'verify') {
       const b = backups.find(x => x.name === args[1]);
       if (!b) return [{ event: 'error', msg: 'no-sums' }];
-      const n = b.files;
-      return [...Array.from({ length: n }, (_, i) => ({ event: 'file', name: `part${i}.img`, state: 'ok' })), { event: 'finish', ok: n, bad: 0 }];
+      const n = b.files, each = Math.round(b.kb / n);
+      const out = [{ event: 'plan', count: n, kb: each * n }];
+      for (let i = 0; i < n; i++) out.push({ event: 'start', name: `part${i}.img`, kb: each }, { event: 'file', name: `part${i}.img`, state: 'ok' });
+      return [...out, { event: 'finish', ok: n, bad: 0 }];
+    }
+    if (args[0] === 'archive') {
+      const b = backups.find(x => x.name === args[1]);
+      if (!b) return [{ event: 'error', msg: 'missing' }];
+      const file = `/sdcard/FastbootStudio/Backups/${b.name}.tar`;
+      const out = [{ event: 'plan', file, count: b.files + 2, kb: b.kb }];
+      for (let i = 1; i <= 4; i++) out.push({ event: 'progress', name: b.name, bytes: String(Math.round(b.kb * 1024 * i / 4)), of: '' });
+      b.tar = true;
+      return [...out, { event: 'finish', file, files: b.files + 2, kb: b.kb + 20 }];
     }
     const set = args[1];
     const slot = info.slot;
+    // The same refusals as backup_run: a name it does not know, or one it never copies.
+    if (set === 'custom') {
+      const bad = args.slice(2).find(n => !parts.some(([p, , , c]) => p === n && c !== 'never'));
+      if (bad !== undefined) return [{ event: 'error', msg: 'bad-name', name: bad }];
+      if (args.length < 3) return [{ event: 'error', msg: 'nothing' }];
+    }
     const list = parts.filter(([n, , , c]) => c !== 'never' && (set === 'full' || (set === 'critical' && c === 'critical') ||
+      (set === 'custom' && args.slice(2).includes(n)) ||
       (set === 'boot' && c === 'boot' && (!/_[ab]$/.test(n) || n.endsWith(slot)))));
     const folder = 'Demo_Phone_DEMO0123456789_20261009-211407';
     const out = [{ event: 'plan', set, folder, count: list.length, kb: list.reduce((a, p) => a + p[2] / 2, 0) }];
     list.forEach(([name, , sec]) => {
       out.push({ event: 'start', name, kb: sec / 2 });
+      // 32 MiB and up: progress about once a second while it copies, as fbs reports it.
+      if (sec >= 65536) {
+        const steps = sec >= 4194304 ? 8 : 2;
+        for (let i = 1; i <= steps; i++) out.push({ event: 'progress', name, bytes: String(Math.round(sec * S * i / steps)), of: String(sec * S) });
+      }
+      out.push({ event: 'hash', name });
       out.push({ event: 'done', name, bytes: String(sec * S), sha256: 'demo' });
     });
     out.push({ event: 'finish', folder, saved: list.length, failed: 0 });
-    backups.unshift({ name: folder, files: list.length, kb: out[0].kb, sums: true });
+    backups.unshift({ name: folder, files: list.length, kb: out[0].kb, sums: true, tar: false });
     return out;
   }
 
@@ -184,12 +215,26 @@
 
   // For the smoke test: ?demo=backup taps "Start backup" and ?demo=verify the first "Verify",
   // so the spawn path (quoting, events, the list drawn again) is run, not only the first screen.
+  // ?demo=custom picks nvram and boot_a by hand (or the names in ?pick=a,b) and backs those
+  // up; ?demo=full starts the full set (its confirmation included), where super reports
+  // progress for a while.
   const auto = new URLSearchParams(location.search).get('demo');
-  if (auto === 'backup' || auto === 'verify') {
+  if (['backup', 'verify', 'custom', 'full', 'archive'].includes(auto)) {
     const tap = () => {
       const b = document.querySelector('#backupList [data-act="verify"]');
-      if (!b) return setTimeout(tap, 100);
-      (auto === 'verify' ? b : document.querySelector('#backupGo')).click();
+      if (!b || !document.querySelector('#customRows input')) return setTimeout(tap, 100);
+      if (auto === 'verify') return b.click();
+      if (auto === 'archive') return document.querySelector('#backupList [data-act="archive"]').click();
+      if (auto === 'custom' || auto === 'full') {
+        document.querySelector(`input[name="set"][value="${auto}"]`).click();
+        if (auto === 'custom') {
+          document.querySelectorAll('#customRows input:checked').forEach(x => x.click());
+          (query.get('pick') || 'nvram,boot_a').split(',').forEach(n => document.querySelector(`#customRows input[value="${n}"]`).click());
+        }
+      }
+      document.querySelector('#backupGo').click();
+      // A full backup, or a large pick, asks first.
+      setTimeout(() => { if (!document.querySelector('#sheet').hidden) document.querySelector('#sheetBtns button:last-child').click(); }, 100);
     };
     setTimeout(tap, 300);
   }
@@ -219,7 +264,7 @@
         if (!child) return;
         if (i < list.length) {
           child.stdout.emit('data', JSON.stringify(list[i++]));
-          setTimeout(step, args[0] === 'verify' ? 60 : 140);
+          setTimeout(step, (args[0] === 'verify' ? 60 : 140) * slow);
         } else {
           child.emit('exit', 0);
         }

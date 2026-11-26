@@ -45,6 +45,15 @@ for lang in en ar; do
     check "backup listed afterwards" 'data-name="Demo_Phone_DEMO0123456789_20261009-211407"'
     check "backup checked afterwards" 'data-name="Demo_Phone_DEMO0123456789_20261009-211407".*color:var(--ok)">✓'
     check "free space shown" 'id="backupFree" role="status">[^<]*48'
+    check "a big partition reported its progress" 'data-n="md1img_a"[^>]*data-p="1"'
+    dom=$("$CHROME" --headless --no-sandbox --disable-gpu --virtual-time-budget=9000 --dump-dom "file://$PAGE?lang=$lang&demo=custom#backup" 2>/dev/null)
+    check "a picked set copies what was picked" 'data-n="boot_a"'
+    check "a picked set copies nothing else" 'id="progCount">2 / 2<'
+    check "userdata cannot be picked" 'value="userdata" disabled'
+    check "the pick is counted" 'id="customSum" role="status">2 '
+    dom=$("$CHROME" --headless --no-sandbox --disable-gpu --virtual-time-budget=6000 --dump-dom "file://$PAGE?lang=$lang&demo=archive#backup" 2>/dev/null)
+    check "an archive is made and offered for sharing" 'data-act="share"'
+    check "the archive path is shown" 'Demo_Phone_DEMO0123456789_20260921-184012.tar'
     dom=$("$CHROME" --headless --no-sandbox --disable-gpu --virtual-time-budget=6000 --dump-dom "file://$PAGE?lang=$lang&demo=verify#backup" 2>/dev/null)
     check "verify ran through spawn" 'data-name="Demo_Phone_DEMO0123456789_20260921-184012".*color:var(--ok)">✓'
     check "no button left busy" 'data-act="verify">'

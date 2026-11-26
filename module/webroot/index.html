@@ -112,12 +112,25 @@
       <label class="opt"><input type="radio" name="set" value="critical" checked><span><b data-i="set.critical"></b><small id="setCritical"></small></span></label>
       <label class="opt"><input type="radio" name="set" value="boot"><span><b data-i="set.boot"></b><small id="setBoot"></small></span></label>
       <label class="opt"><input type="radio" name="set" value="full"><span><b data-i="set.full"></b><small id="setFull"></small></span></label>
+      <label class="opt"><input type="radio" name="set" value="custom"><span><b data-i="set.custom"></b><small id="setCustom"></small></span></label>
+      <div class="card" id="customCard" hidden>
+        <div class="row"><input class="search" id="customQ" type="search" autocomplete="off" spellcheck="false" data-ph="parts.search"></div>
+        <div class="filters" id="customG" role="group">
+          <button class="fbtn" type="button" data-g="critical" aria-pressed="false" data-i="cat.critical"></button>
+          <button class="fbtn" type="button" data-g="boot" aria-pressed="false" data-i="cat.boot"></button>
+          <button class="fbtn" type="button" data-g="other" aria-pressed="false" data-i="parts.rest"></button>
+        </div>
+        <div class="clist" id="customRows"></div>
+        <p class="note" id="customSum" role="status"></p>
+        <p class="note warn" id="customBig" hidden></p>
+      </div>
       <label class="check"><input type="checkbox" id="verifyAfter" checked> <span data-i="backup.verifyAfter"></span></label>
       <button class="btn" id="backupGo" data-i="backup.start"></button>
       <p class="note" id="backupFree" role="status"></p>
       <div class="card" id="progCard" hidden>
-        <h3><span id="progTitle" class="ltr"></span><span class="chip mute" id="progCount"></span></h3>
+        <h3><span id="progTitle" class="ltr"></span><span class="chip mute ltr" id="progCount"></span></h3>
         <div class="meter big"><i id="progBar"></i></div>
+        <p class="note" id="progEta"></p>
         <div class="prog" id="progRows"></div>
       </div>
       </div>
@@ -144,6 +157,7 @@
         <label class="check"><input type="checkbox" id="redact" checked> <span data-i="bundle.redact"></span></label>
         <button class="btn ghost" id="bundleGo" data-i="bundle.go"></button>
         <p class="note" id="bundleOut" role="status"></p>
+        <button class="btn-s" id="bundleShare" type="button" data-i="share.go" style="margin-top:.8rem" hidden></button>
       </div>
       <div class="card">
         <h3 data-i="about.title"></h3>

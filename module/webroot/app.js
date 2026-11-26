@@ -554,6 +554,7 @@ function backupSet(set) {
     if (x.cat === 'never' || x.sectors == null) return false;
     // Maybe a whole disk (see part_list): copied only under a name fbs knows.
     if (x.sure === false && x.cat !== 'critical' && x.cat !== 'boot') return false;
+    if (set === 'custom') return Custom.picked.has(x.name);
     if (set === 'critical') return x.cat === 'critical';
     if (set === 'boot') return x.cat === 'boot' && (!slot || !/_[ab]$/.test(x.name) || x.name.endsWith(slot));
     return true;
@@ -576,7 +577,98 @@ function renderSets() {
   put('#setCritical', T('set.desc.critical', names(c)), c);
   put('#setBoot', T('set.desc.boot', names(b), iso(S.info?.slot || '')), b);
   put('#setFull', T('set.desc.full'), f);
+  renderCustom();
   renderFree();
+}
+
+/* A set picked by hand. The rules are fbs's own (backup_run): userdata is never copied, and a
+   link that may be a whole disk only under a name fbs knows; such rows are shown, with the
+   reason, and cannot be ticked. The pick is kept between visits. */
+const Custom = { picked: new Set(), q: '' };
+try { JSON.parse(localStorage.getItem('fbs.custom') || '[]').forEach(n => Custom.picked.add(String(n))); } catch { /* an empty pick */ }
+const BIG_PICK = 4 * GiB;
+const pickable = x => x.cat !== 'never' && x.sectors != null && !(x.sure === false && x.cat !== 'critical' && x.cat !== 'boot');
+const groupOf = x => (x.cat === 'critical' || x.cat === 'boot' ? x.cat : x.cat === 'super' ? 'super' : 'other');
+function saveCustom() {
+  try { localStorage.setItem('fbs.custom', JSON.stringify([...Custom.picked])); } catch { /* per-session only */ }
+}
+function renderCustom() {
+  const all = S.parts?.parts || [];
+  // A partition that is gone, or may no longer be picked, leaves the pick.
+  const ok = new Set(all.filter(pickable).map(x => x.name));
+  if (all.length) [...Custom.picked].forEach(n => { if (!ok.has(n)) Custom.picked.delete(n); });
+  const chosen = backupSet('custom');
+  const bytes = chosen.reduce((a, x) => a + sectors(x.sectors), 0);
+  // Nothing picked is 0, not the "1 KiB" the smallest size is rounded up to.
+  const total = bytes ? size(bytes) : iso('0 MiB');
+  const sum = document.createElement('span');
+  $('#setCustom').textContent = T('set.desc.custom');
+  sum.className = 'sum';
+  sum.textContent = T('custom.sum', chosen.length, total);
+  $('#setCustom').append(sum);
+  $('#customCard').hidden = $('input[name="set"]:checked').value !== 'custom';
+  $('#customSum').textContent = T('custom.sum', chosen.length, total);
+  const big = $('#customBig');
+  big.hidden = bytes < BIG_PICK;
+  if (!big.hidden) big.textContent = T('custom.big', size(bytes));
+  $$('#customG .fbtn').forEach(b => {
+    const g = all.filter(x => pickable(x) && groupOf(x) === b.dataset.g);
+    b.disabled = !g.length;
+    b.setAttribute('aria-pressed', String(g.length > 0 && g.every(x => Custom.picked.has(x.name))));
+  });
+  const q = Custom.q.toLowerCase();
+  const list = all.filter(x => !q || x.name.toLowerCase().includes(q));
+  $('#customRows').innerHTML = list.length ? list.map(x => {
+    const can = pickable(x);
+    const why = can ? '' : x.cat === 'never' ? T('custom.never') : x.sectors == null ? '–' : T('cat.unsure');
+    const tag = { critical: ['warn', T('cat.critical')], boot: ['info', T('cat.boot')], super: ['', 'super'], never: ['danger', T('cat.never')] }[x.cat];
+    return `<label class="crow${can ? '' : ' off'}"><input type="checkbox" value="${esc(x.name)}"${Custom.picked.has(x.name) ? ' checked' : ''}${can ? '' : ' disabled'}>` +
+      `<span class="cn"><span class="pn">${esc(x.name)}</span>${why ? `<small>${esc(why)}</small>` : ''}</span>` +
+      `${tag ? `<span class="chip ${tag[0]}">${esc(tag[1])}</span>` : ''}<span class="ps">${size(sectors(x.sectors))}</span></label>`;
+  }).join('') : `<p class="note">${esc(T('log.empty'))}</p>`;
+}
+$('#customRows').addEventListener('change', e => {
+  const box = e.target;
+  if (!box.matches('input[type="checkbox"]')) return;
+  if (box.checked) Custom.picked.add(box.value); else Custom.picked.delete(box.value);
+  saveCustom();
+  renderCustom();
+  renderFree();
+});
+$('#customQ').addEventListener('input', e => { Custom.q = e.target.value.trim(); renderCustom(); });
+// One tap takes or drops a whole kind. super is not in a kind: it is picked on its own, being
+// several GiB.
+$$('#customG .fbtn').forEach(b => b.addEventListener('click', () => {
+  const g = (S.parts?.parts || []).filter(x => pickable(x) && groupOf(x) === b.dataset.g);
+  const allIn = g.every(x => Custom.picked.has(x.name));
+  g.forEach(x => { if (allIn) Custom.picked.delete(x.name); else Custom.picked.add(x.name); });
+  saveCustom();
+  renderCustom();
+  renderFree();
+}));
+$$('input[name="set"]').forEach(r => r.addEventListener('change', renderCustom));
+
+/* Speed and time left for a long job, made so they do not jump: the speed moves slowly
+   towards each new sample, and the time is said in round steps. */
+function Rate(totalKb) {
+  let last = null, speed = 0;
+  return {
+    feed(doneKb) {
+      const now = Date.now();
+      if (!last) { last = { t: now, kb: doneKb }; return; }
+      if (now - last.t < 800) return;
+      const s = (doneKb - last.kb) / ((now - last.t) / 1000);
+      if (s >= 0) speed = speed ? speed * 0.7 + s * 0.3 : s;
+      last = { t: now, kb: doneKb };
+    },
+    text(doneKb) {
+      if (!speed) return '';
+      const left = Math.max(0, totalKb - doneKb) / speed;
+      const eta = left < 10 ? T('eta.soon') : left < 90 ? T('eta.sec', Math.ceil(left / 10) * 10) : T('eta.min', Math.ceil(left / 60));
+      // "/s" goes inside the isolate with its number, or an Arabic line puts it before it.
+      return `${size(speed * 1024).replace('\u2069', '/s\u2069')} · ${eta}`;
+    },
+  };
 }
 
 // Free space next to the button, and a warning before the tap when the chosen set does not
@@ -594,6 +686,7 @@ function renderFree() {
 $$('input[name="set"]').forEach(r => r.addEventListener('change', renderFree));
 
 function backupError(ev) {
+  if (ev.msg === 'bad-name') return T('err.bad-name', iso(ev.name || '?'));
   if (ev.msg === 'space') return T('err.space', size(ev.need_kb * 1024), size(ev.free_kb * 1024));
   if (ev.msg === 'storage') return T('err.storage', iso('/sdcard/FastbootStudio'));
   const key = 'err.' + ev.msg;
@@ -604,16 +697,19 @@ let backupRunning = false;
 $('#backupGo').onclick = () => {
   if (backupRunning) return;
   const set = $('input[name="set"]:checked').value;
-  if (set === 'full') {
-    const f = backupSet('full');
-    sheet(T('backup.confirm'), `<p class="note">${esc(T('backup.confirmBody', f.length, size(f.reduce((a, x) => a + sectors(x.sectors), 0)), iso('/sdcard/FastbootStudio/Backups')))}</p>`,
-      [{ label: T('cancel') }, { label: T('backup.start'), kind: '', onClick: () => { closeSheet(); runBackup(set); } }]);
+  const l = backupSet(set);
+  const bytes = l.reduce((a, x) => a + sectors(x.sectors), 0);
+  const names = set === 'custom' ? l.map(x => x.name) : [];
+  if (set === 'custom' && !l.length) return toast(T('custom.none'));
+  if (set === 'full' || (set === 'custom' && bytes >= BIG_PICK)) {
+    sheet(T(set === 'full' ? 'backup.confirm' : 'set.custom'), `<p class="note">${esc(T('backup.confirmBody', l.length, size(bytes), iso('/sdcard/FastbootStudio/Backups')))}</p>`,
+      [{ label: T('cancel') }, { label: T('backup.start'), kind: '', onClick: () => { closeSheet(); runBackup(set, names); } }]);
   } else {
-    runBackup(set);
+    runBackup(set, names);
   }
 };
 
-async function runBackup(set) {
+async function runBackup(set, names = []) {
   backupRunning = true;
   const go = $('#backupGo');
   go.disabled = true;
@@ -622,10 +718,20 @@ async function runBackup(set) {
   rows.innerHTML = '';
   $('#progCard').hidden = false;
   $('#progBar').style.width = '0';
-  let plan = null, doneKb = 0, saved = 0, folder = '';
-  const row = name => rows.querySelector(`[data-n="${CSS.escape(name)}"] .st`);
+  $('#progEta').textContent = '';
+  let plan = null, doneKb = 0, saved = 0, folder = '', rate = null;
+  const rowOf = name => rows.querySelector(`[data-n="${CSS.escape(name)}"]`);
+  const row = name => rowOf(name)?.querySelector('.st');
+  // The big bar goes by bytes, not by how many partitions are done: super alone is most of a
+  // full backup.
+  const overall = curKb => {
+    if (!plan || !plan.kb) return;
+    $('#progBar').style.width = Math.min(100, ((doneKb + curKb) / plan.kb) * 100).toFixed(1) + '%';
+    rate.feed(doneKb + curKb);
+    $('#progEta').textContent = rate.text(doneKb + curKb);
+  };
   try {
-    await Bridge.spawn(['backup', set], line => {
+    await Bridge.spawn(['backup', set, ...names], line => {
       let ev;
       try { ev = JSON.parse(line); } catch { return; }
       if (ev.event === 'error') {
@@ -633,14 +739,36 @@ async function runBackup(set) {
         $('#progCard').hidden = true;
       } else if (ev.event === 'plan') {
         plan = ev;
+        rate = Rate(ev.kb);
+        rate.feed(0);
         $('#progTitle').textContent = ev.folder;
         $('#progCount').textContent = `0 / ${ev.count}`;
       } else if (ev.event === 'start') {
-        rows.insertAdjacentHTML('afterbegin', `<div class="prow" data-n="${esc(ev.name)}"><span class="pn">${esc(ev.name)}.img</span><span class="st">${size(ev.kb * 1024)}…</span></div>`);
+        rows.insertAdjacentHTML('afterbegin', `<div class="prow run" data-n="${esc(ev.name)}"><span class="pn">${esc(ev.name)}.img</span><span class="st">${size(ev.kb * 1024)}…</span><div class="meter"><i></i></div></div>`);
         ev.kb && (row(ev.name).dataset.kb = ev.kb);
+      } else if (ev.event === 'progress') {
+        const r = rowOf(ev.name);
+        if (r) {
+          const b = Number(ev.bytes), of = Number(ev.of) || 0;
+          r.dataset.p = '1';
+          r.querySelector('.meter i').style.width = (of ? Math.min(100, (b / of) * 100) : 0).toFixed(1) + '%';
+          r.querySelector('.st').textContent = `${size(b)} / ${size(of)}`;
+          overall(b / 1024);
+        }
+      } else if (ev.event === 'hash') {
+        // The copy is whole; reading it back for its SHA-256 is the slow part that is left.
+        const r = rowOf(ev.name);
+        if (r) {
+          r.classList.add('hash');
+          r.querySelector('.meter i').style.width = '100%';
+          r.querySelector('.st').textContent = T('backup.hashing');
+          r.querySelector('.st').classList.add('txt');
+          overall(Number(r.querySelector('.st').dataset.kb || 0));
+        }
       } else if (ev.event === 'done' || ev.event === 'fail') {
         const st = row(ev.name);
         if (st) {
+          rowOf(ev.name).classList.remove('run', 'hash');
           doneKb += Number(st.dataset.kb || 0);
           st.textContent = ev.event === 'done' ? '✓ ' + size(Number(ev.bytes)) : '✗';
           st.className = 'st ' + (ev.event === 'done' ? 'ok' : 'bad');
@@ -649,10 +777,11 @@ async function runBackup(set) {
         if (ev.event === 'done') saved++;
         if (plan) {
           $('#progCount').textContent = `${rows.childElementCount} / ${plan.count}`;
-          $('#progBar').style.width = (plan.kb ? (doneKb / plan.kb) * 100 : 0).toFixed(1) + '%';
+          overall(0);
         }
       } else if (ev.event === 'finish') {
         $('#progBar').style.width = '100%';
+        $('#progEta').textContent = '';
         if (ev.saved) folder = ev.folder;
         toast(T('backup.done', ev.saved) + (ev.failed ? ' · ' + T('backup.failed', ev.failed) : ''));
       }
@@ -688,6 +817,9 @@ async function loadBackups() {
   }
 }
 
+// An archive being made, by backup name: { pct, text }.
+const Archiving = new Map();
+
 function paintBackups() {
   const list = $('#backupList');
   if (!Backups.items) return;
@@ -697,28 +829,48 @@ function paintBackups() {
     return;
   }
   list.innerHTML = Backups.items.map(x => {
-    const v = Verified.get(x.name);
-    const meta = !v || v === 'running' ? esc(T('backup.files', x.files, x.kb == null ? '–' : size(x.kb * 1024)))
-      : v.bad ? `<span style="color:var(--danger)">✗ ${esc(T('backup.bad', v.bad))}: ${esc(iso(v.names.join(', ')))}</span>`
-        : `<span style="color:var(--ok)">✓ ${esc(T('backup.ok', v.ok))}</span>`;
+    const v = Verified.get(x.name), ar = Archiving.get(x.name);
+    const busy = (v && v.running) || ar;
+    const job = ar || (v && v.running ? v : null);
+    const meta = job ? esc(job.text)
+      : !v ? esc(T('backup.files', x.files, x.kb == null ? '–' : size(x.kb * 1024)))
+        : v.bad ? `<span style="color:var(--danger)">✗ ${esc(T('backup.bad', v.bad))}: ${esc(iso(v.names.join(', ')))}</span>`
+          : `<span style="color:var(--ok)">✓ ${esc(T('backup.ok', v.ok))}</span>`;
     return `<div class="bitem" data-name="${esc(x.name)}"><span class="p">${esc(x.name)}/</span>` +
-      `<button class="btn-s" data-act="verify"${x.sums && v !== 'running' ? '' : ' disabled'}>${esc(T(v === 'running' ? 'backup.verifying' : 'backup.verify'))}</button>` +
-      `<button class="btn-s danger" data-act="delete"${v === 'running' ? ' disabled' : ''}>${esc(T('backup.delete'))}</button>` +
-      `<span class="m">${meta}</span></div>`;
+      `<span class="m">${meta}</span>` +
+      (job ? `<div class="meter"><i style="width:${job.pct.toFixed(1)}%"></i></div>` : '') +
+      `<div class="bacts"><button class="btn-s" data-act="verify"${x.sums && !busy ? '' : ' disabled'}>${esc(T(v && v.running ? 'backup.verifying' : 'backup.verify'))}</button>` +
+      `<button class="btn-s" data-act="${x.tar ? 'share' : 'archive'}"${busy ? ' disabled' : ''}>${esc(T(ar ? 'archive.running' : x.tar ? 'share.go' : 'archive.go'))}</button>` +
+      `<button class="btn-s danger" data-act="delete"${busy ? ' disabled' : ''}>${esc(T('backup.delete'))}</button></div></div>`;
   }).join('');
 }
 
 async function runVerify(name) {
-  if (Verified.get(name) === 'running') return;
-  Verified.set(name, 'running');
+  if (Verified.get(name)?.running) return;
+  const state = { running: true, pct: 0, text: T('backup.verifying') };
+  Verified.set(name, state);
   paintBackups();
-  let result = null, error = '';
+  let result = null, error = '', rate = null, total = 0, doneKb = 0, n = 0, count = 0;
   const bad = [];
+  // sha256sum says nothing while it reads, so the bar moves once per file; the time left
+  // comes from the files already read.
+  const show = () => {
+    state.pct = total ? Math.min(100, (doneKb / total) * 100) : 0;
+    state.text = [T('backup.checking', iso(`${n} / ${count}`)), rate ? rate.text(doneKb) : ''].filter(Boolean).join(' · ');
+    paintBackups();
+  };
   try {
     await Bridge.spawn(['verify', name], line => {
       let ev;
       try { ev = JSON.parse(line); } catch { return; }
-      if (ev.event === 'file' && ev.state !== 'ok') bad.push(ev.name);
+      if (ev.event === 'plan') { total = ev.kb || 0; count = ev.count; rate = Rate(total); rate.feed(0); show(); }
+      if (ev.event === 'start') { n++; state.cur = ev.kb || 0; show(); }
+      if (ev.event === 'file') {
+        if (ev.state !== 'ok') bad.push(ev.name);
+        doneKb += state.cur || 0;
+        if (rate) rate.feed(doneKb);
+        show();
+      }
       if (ev.event === 'finish') result = ev;
       if (ev.event === 'error') error = ev.msg;
     });
@@ -732,12 +884,62 @@ async function runVerify(name) {
   paintBackups();
 }
 
+// One .tar of a backup, next to its folder, to send as a single file.
+async function runArchive(name) {
+  if (Archiving.has(name)) return;
+  const state = { pct: 0, text: T('archive.running') };
+  Archiving.set(name, state);
+  paintBackups();
+  let done = null, error = null, rate = null, total = 0;
+  try {
+    await Bridge.spawn(['archive', name], line => {
+      let ev;
+      try { ev = JSON.parse(line); } catch { return; }
+      if (ev.event === 'plan') { total = ev.kb || 0; rate = Rate(total); rate.feed(0); }
+      if (ev.event === 'progress' && total) {
+        const kb = Number(ev.bytes) / 1024;
+        rate.feed(kb);
+        state.pct = Math.min(100, (kb / total) * 100);
+        state.text = [`${T('archive.running')} ${iso(`${size(kb * 1024)} / ${size(total * 1024)}`)}`, rate.text(kb)].filter(Boolean).join(' · ');
+        paintBackups();
+      }
+      if (ev.event === 'finish') done = ev;
+      if (ev.event === 'error') error = ev;
+    });
+  } catch (e) { error = error || { msg: String(e.message || e) }; }
+  Archiving.delete(name);
+  if (done) {
+    await loadBackups();
+    askShare(done.file, T('archive.done', size((done.kb || 0) * 1024)));
+  } else {
+    toast(backupError(error || { msg: 'tar' }));
+    paintBackups();
+  }
+}
+
+/* Sharing. fbs opens Android's share sheet only when it has an address for the file that
+   another app can read; "ok" means the sheet was asked for, never that something was sent.
+   When it cannot, the file's place is shown with a button to copy it. */
+function askShare(file, title) {
+  sheet(title, `<pre class="code wrap">${esc(file)}</pre>`,
+    [{ label: T('close') }, { label: T('share.go'), kind: '', onClick: () => { closeSheet(); shareFile(file); } }]);
+}
+async function shareFile(file) {
+  let r = null;
+  try { r = JSON.parse(await fbs('share', file)); } catch { /* shown as not possible below */ }
+  if (r && r.ok) return toast(T('share.opened'));
+  sheet(T('share.title'), `<p class="note">${esc(T('share.cannot'))}</p><pre class="code wrap">${esc(file)}</pre>`,
+    [{ label: T('close') }, { label: T('share.copy'), kind: '', onClick: () => { copy(file); closeSheet(); } }]);
+}
+
 $('#backupList').addEventListener('click', e => {
   const btn = e.target.closest('button');
   if (!btn || btn.disabled) return;
-  const item = btn.closest('.bitem');
-  if (btn.dataset.act === 'delete') return askDelete(item.dataset.name);
-  runVerify(item.dataset.name);
+  const name = btn.closest('.bitem').dataset.name;
+  if (btn.dataset.act === 'delete') return askDelete(name);
+  if (btn.dataset.act === 'archive') return runArchive(name);
+  if (btn.dataset.act === 'share') return shareFile(`${Backups.root}/${name}.tar`);
+  runVerify(name);
 });
 
 $('#verifyAfter').checked = readPref('verifyAfter', ['0', '1']) !== '0';
@@ -881,6 +1083,10 @@ $('#bundleGo').onclick = async e => {
   try {
     const r = await fbsJson(...($('#redact').checked ? ['bundle'] : ['bundle', 'plain']));
     $('#bundleOut').textContent = r.ok ? T('bundle.saved', iso(r.file)) : T('err.generic', r.msg);
+    // One file, so it can be shared as it is.
+    const share = $('#bundleShare');
+    share.hidden = !r.ok;
+    share.onclick = () => shareFile(r.file);
   } catch (err) {
     $('#bundleOut').textContent = T('err.generic', err.message || err);
   }
